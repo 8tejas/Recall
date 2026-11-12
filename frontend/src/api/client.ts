@@ -14,8 +14,12 @@ import {
   MCQAssessmentResult,
 } from '../types';
 
+const apiBase = import.meta.env.VITE_API_BASE_URL
+  ? `${(import.meta.env.VITE_API_BASE_URL as string).replace(/\/+$/, '')}/api`
+  : '/api';
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBase,
   headers: {
     'Content-Type': 'application/json',
   },

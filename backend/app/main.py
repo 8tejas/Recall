@@ -39,14 +39,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS configuration — allow all in dev, restrict to specific origins in production
-cors_origins = ["*"] if settings.ENVIRONMENT == "development" else settings.CORS_ORIGINS
+# CORS configuration — allow local origins, all Render domains, and configured origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"^https://.*\.onrender\.com$",
 )
 
 # Register API routes
