@@ -132,24 +132,24 @@ export const TopicWorkspacePage: React.FC = () => {
   const conceptualEx = exercises.find((e) => e.exercise_mode === 'conceptual');
 
   return (
-    <div className="flex flex-col h-full bg-white animate-fade-in overflow-hidden">
+    <div className="flex flex-col h-full bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 animate-fade-in overflow-hidden">
       {/* Workspace Top Navigation Bar */}
-      <div className="border-b border-stone-200 px-6 sm:px-8 py-3.5 bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+      <div className="border-b border-stone-200 dark:border-stone-800 px-6 sm:px-8 py-3.5 bg-stone-50/50 dark:bg-stone-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate(`/subjects/${topicDetail.subject?.id}`)}
-            className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/50 transition-colors"
+            className="p-1 rounded text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-colors"
             title="Back to Subject"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <div className="flex items-center space-x-2 text-[11px] text-stone-500 font-mono">
+            <div className="flex items-center space-x-2 text-[11px] text-stone-500 dark:text-stone-400 font-mono">
               <span>{topicDetail.subject?.name}</span>
               <span>/</span>
               <span>{topicDetail.unit?.title}</span>
             </div>
-            <h1 className="text-base font-bold text-stone-900 tracking-tight">
+            <h1 className="text-base font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               {topicDetail.title}
             </h1>
           </div>
@@ -161,39 +161,39 @@ export const TopicWorkspacePage: React.FC = () => {
             onClick={handleToggleMastery}
             className={`px-2.5 py-1 rounded text-xs font-mono font-medium border transition-colors flex items-center space-x-1.5 ${
               topicDetail.status === 'mastered'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200'
             }`}
           >
-            <CheckCircle2 className={`w-3.5 h-3.5 ${topicDetail.status === 'mastered' ? 'text-emerald-700' : 'text-stone-400'}`} />
+            <CheckCircle2 className={`w-3.5 h-3.5 ${topicDetail.status === 'mastered' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-400'}`} />
             <span className="capitalize">{topicDetail.status.replace('_', ' ')}</span>
           </button>
 
           {/* Selective Generator Button */}
           <button
             onClick={() => setIsGeneratorOpen(true)}
-            className="px-3.5 py-1 rounded bg-stone-900 text-white text-xs font-medium hover:bg-stone-800 transition-colors flex items-center space-x-1.5 shadow-2xs"
+            className="px-3.5 py-1 rounded bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium hover:bg-stone-800 dark:hover:bg-white transition-colors flex items-center space-x-1.5 shadow-2xs"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 dark:text-amber-600" />
             <span>Generate Resources</span>
           </button>
         </div>
       </div>
 
       {/* 5-Section Workspace Tabs */}
-      <div className="border-b border-stone-200 px-6 sm:px-8 bg-white flex space-x-1 overflow-x-auto shrink-0 select-none">
+      <div className="border-b border-stone-200 dark:border-stone-800 px-6 sm:px-8 bg-white dark:bg-stone-950 flex space-x-1 overflow-x-auto shrink-0 select-none">
         <button
           onClick={() => handleTabChange('notes')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
             activeTab === 'notes'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
           }`}
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>A. Study Material</span>
           {materials.length > 0 && (
-            <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded-full font-mono">
+            <span className="text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-1.5 py-0.2 rounded-full font-mono">
               {materials.length}
             </span>
           )}
@@ -203,14 +203,14 @@ export const TopicWorkspacePage: React.FC = () => {
           onClick={() => handleTabChange('memorize')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
             activeTab === 'memorize'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
           }`}
         >
-          <Brain className="w-3.5 h-3.5 text-stone-700" />
-          <span className="font-semibold text-stone-900">B. Memorization Engine</span>
+          <Brain className="w-3.5 h-3.5 text-stone-700 dark:text-stone-300" />
+          <span className="font-semibold text-stone-900 dark:text-stone-100">B. Memorization Engine</span>
           {exercises.length > 0 && (
-            <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded-full font-mono">
+            <span className="text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-1.5 py-0.2 rounded-full font-mono">
               {exercises.length}
             </span>
           )}
@@ -220,8 +220,8 @@ export const TopicWorkspacePage: React.FC = () => {
           onClick={() => handleTabChange('conceptual')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
             activeTab === 'conceptual'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -232,14 +232,14 @@ export const TopicWorkspacePage: React.FC = () => {
           onClick={() => handleTabChange('practice')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
             activeTab === 'practice'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
           }`}
         >
           <FileQuestion className="w-3.5 h-3.5" />
           <span>D. Written Practice</span>
           {questions.length > 0 && (
-            <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded-full font-mono">
+            <span className="text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-1.5 py-0.2 rounded-full font-mono">
               {questions.length}
             </span>
           )}
@@ -249,8 +249,8 @@ export const TopicWorkspacePage: React.FC = () => {
           onClick={() => handleTabChange('assessment')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
             activeTab === 'assessment'
-              ? 'border-stone-900 text-stone-900 font-semibold'
-              : 'border-transparent text-stone-500 hover:text-stone-800'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
           }`}
         >
           <Award className="w-3.5 h-3.5" />
