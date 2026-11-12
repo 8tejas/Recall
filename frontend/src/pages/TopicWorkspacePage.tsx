@@ -184,7 +184,7 @@ export const TopicWorkspacePage: React.FC = () => {
       </div>
 
       {/* 5-Section Workspace Tabs */}
-      <div className="border-b border-stone-200 dark:border-stone-800 px-6 sm:px-8 bg-white dark:bg-stone-950 flex space-x-1 overflow-x-auto shrink-0 select-none">
+      <div className="border-b border-stone-200 dark:border-stone-800 px-3 sm:px-8 bg-white dark:bg-stone-950 flex space-x-1 overflow-x-auto shrink-0 select-none">
         <button
           onClick={() => handleTabChange('notes')}
           className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
@@ -274,7 +274,7 @@ export const TopicWorkspacePage: React.FC = () => {
       </div>
 
       {/* Main Tab Viewport */}
-      <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         {/* Tab A: Study Material */}
         {activeTab === 'notes' && (
           <StudyNotesView

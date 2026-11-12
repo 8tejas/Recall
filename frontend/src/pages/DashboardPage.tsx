@@ -46,7 +46,7 @@ export const DashboardPage: React.FC = () => {
       : 0;
 
   return (
-    <div className="p-6 sm:p-10 max-w-6xl mx-auto space-y-8 animate-fade-in text-stone-900 dark:text-zinc-100">
+    <div className="p-4 sm:p-10 max-w-6xl mx-auto space-y-6 sm:space-y-8 animate-fade-in text-stone-900 dark:text-zinc-100">
       {/* Page Title & Fast Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-stone-200/80 dark:border-zinc-800 gap-4">
         <div>
