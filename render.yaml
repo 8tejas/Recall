@@ -1,0 +1,68 @@
+# Render deployment blueprint — https://render.com/docs/blueprint-spec
+# Deploy both backend (FastAPI) and frontend (static site) from one repo.
+#
+# Usage:
+#   1. Push this repo to GitHub.
+#   2. Go to https://dashboard.render.com/blueprints and connect the repo.
+#   3. Set the secret env vars listed below in the Render dashboard.
+
+services:
+  # ── Backend: FastAPI ──────────────────────────────────────────────────────
+  - type: web
+    name: recall-backend
+    runtime: python
+    region: singapore  # closest to India; change to ohio/frankfurt as needed
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false          # Set in Render dashboard (Supabase PostgreSQL URL)
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates a secure random value
+      - key: GROQ_API_KEY
+        sync: false          # Set in Render dashboard
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_LIGHT_MODEL
+        value: openai/gpt-oss-20b
+      - key: CORS_ORIGINS
+        value: https://recall-app.onrender.com  # update after first deploy
+      - key: PYTHON_VERSION
+        value: "3.12"
+    healthCheckPath: /api/health
+
+  # ── Frontend: React SPA (Static Site) ─────────────────────────────────────
+  - type: web
+    name: recall-app
+    runtime: static
+    region: singapore
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      # Service Worker requires these headers
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /sw.js
+        name: Service-Worker-Allowed
+        value: /
+    routes:
+      # Proxy /api/* to the backend service
+      - type: rewrite
+        source: /api/*
+        destination: https://recall-backend.onrender.com/api/:splat
+      # SPA fallback — all other routes serve index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://recall-backend.onrender.com
+

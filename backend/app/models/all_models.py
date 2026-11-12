@@ -26,6 +26,7 @@ class User(Base):
     attempts = relationship("Attempt", back_populates="user", cascade="all, delete-orphan")
     review_schedules = relationship("ReviewSchedule", back_populates="user", cascade="all, delete-orphan")
     assessment_results = relationship("AssessmentResult", back_populates="user", cascade="all, delete-orphan")
+    mcq_assessments = relationship("MCQAssessmentResult", back_populates="user", cascade="all, delete-orphan")
 
 
 class Subject(Base):
@@ -65,6 +66,7 @@ class Topic(Base):
     unit_id = Column(String(36), ForeignKey("units.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
+    personal_notes = Column(Text, nullable=True, default="")  # Strictly private user notes, never sent to AI
     order_index = Column(Integer, default=0)
     status = Column(String(32), default="not_started")  # not_started, in_progress, mastered
     created_at = Column(DateTime, default=utc_now)
@@ -74,6 +76,8 @@ class Topic(Base):
     generation_jobs = relationship("GenerationJob", back_populates="topic", cascade="all, delete-orphan")
     exercises = relationship("Exercise", back_populates="topic", cascade="all, delete-orphan")
     questions = relationship("Question", back_populates="topic", cascade="all, delete-orphan")
+    mcq_questions = relationship("MCQQuestion", back_populates="topic", cascade="all, delete-orphan")
+    mcq_assessments = relationship("MCQAssessmentResult", back_populates="topic", cascade="all, delete-orphan")
 
 
 class LearningMaterial(Base):
@@ -199,3 +203,35 @@ class AssessmentResult(Base):
     created_at = Column(DateTime, default=utc_now)
 
     user = relationship("User", back_populates="assessment_results")
+
+
+class MCQQuestion(Base):
+    __tablename__ = "mcq_questions"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    topic_id = Column(String(36), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_text = Column(Text, nullable=False)
+    options = Column(JSON, nullable=False)  # list of {"id": "A", "text": "..."}
+    correct_option_id = Column(String(8), nullable=False)  # "A", "B", "C", "D"
+    explanation = Column(Text, nullable=False)
+    difficulty = Column(String(32), default="medium")
+    created_at = Column(DateTime, default=utc_now)
+
+    topic = relationship("Topic", back_populates="mcq_questions")
+
+
+class MCQAssessmentResult(Base):
+    __tablename__ = "mcq_assessment_results"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    topic_id = Column(String(36), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    score_percentage = Column(Float, default=0.0)
+    total_questions = Column(Integer, default=0)
+    correct_count = Column(Integer, default=0)
+    answers_json = Column(JSON, default=dict)  # {"question_id": "A", ...}
+    detailed_feedback = Column(JSON, default=list)  # list of feedback dicts
+    created_at = Column(DateTime, default=utc_now)
+
+    topic = relationship("Topic", back_populates="mcq_assessments")
+    user = relationship("User", back_populates="mcq_assessments")

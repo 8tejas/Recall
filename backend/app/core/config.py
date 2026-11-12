@@ -1,7 +1,13 @@
 import os
+from pathlib import Path
 from typing import List, Union
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings
+
+# Locate project root and .env path reliably
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ROOT_DIR = BASE_DIR.parent
+ENV_FILE = ROOT_DIR / ".env" if (ROOT_DIR / ".env").exists() else BASE_DIR / ".env"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Recall"
@@ -17,13 +23,15 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./recall.db"
     
-    # CORS
+    # CORS — extend via env var CORS_ORIGINS or FRONTEND_URL
     CORS_ORIGINS: Union[str, List[str]] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000"
     ]
+    # Convenience: set FRONTEND_URL=https://recall.onrender.com on Render
+    FRONTEND_URL: str = ""
     
     # Groq AI Provider
     GROQ_API_KEY: str = ""
@@ -39,7 +47,7 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE) if ENV_FILE.exists() else ".env"
         extra = "ignore"
 
 settings = Settings()

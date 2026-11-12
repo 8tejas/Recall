@@ -29,9 +29,10 @@ import { DefinitionRecallView } from '../components/memorization/DefinitionRecal
 import { ListSequenceView } from '../components/memorization/ListSequenceView';
 import { WrittenPracticeView } from '../components/practice/WrittenPracticeView';
 import { TopicAssessmentView } from '../components/workspace/TopicAssessmentView';
+import { MCQAssessmentView } from '../components/workspace/MCQAssessmentView';
 import { SelectiveGeneratorModal } from '../components/workspace/SelectiveGeneratorModal';
 
-type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment';
+type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment' | 'mcq';
 
 export const TopicWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,7 @@ export const TopicWorkspacePage: React.FC = () => {
     if (location.pathname.endsWith('/memorize')) return 'memorize';
     if (location.pathname.endsWith('/practice')) return 'practice';
     if (location.pathname.endsWith('/assessment')) return 'assessment';
+    if (location.pathname.endsWith('/mcq')) return 'mcq';
     return 'notes';
   };
 
@@ -90,6 +92,7 @@ export const TopicWorkspacePage: React.FC = () => {
     else if (tab === 'memorize') navigate(`/topics/${id}/memorize`);
     else if (tab === 'practice') navigate(`/topics/${id}/practice`);
     else if (tab === 'assessment') navigate(`/topics/${id}/assessment`);
+    else if (tab === 'mcq') navigate(`/topics/${id}/mcq`);
     else navigate(`/topics/${id}`);
   };
 
@@ -256,6 +259,18 @@ export const TopicWorkspacePage: React.FC = () => {
           <Award className="w-3.5 h-3.5" />
           <span>E. Topic Assessment</span>
         </button>
+
+        <button
+          onClick={() => handleTabChange('mcq')}
+          className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
+            activeTab === 'mcq'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          <span>F. MCQ Assessment</span>
+        </button>
       </div>
 
       {/* Main Tab Viewport */}
@@ -263,6 +278,8 @@ export const TopicWorkspacePage: React.FC = () => {
         {/* Tab A: Study Material */}
         {activeTab === 'notes' && (
           <StudyNotesView
+            topicId={topicDetail.id}
+            topicTitle={topicDetail.title}
             materials={materials}
             onMaterialUpdated={loadAllTopicData}
           />
@@ -271,19 +288,19 @@ export const TopicWorkspacePage: React.FC = () => {
         {/* Tab B: Memorization Engine */}
         {activeTab === 'memorize' && (
           <div className="space-y-8 max-w-4xl">
-            <div className="p-4 rounded-lg bg-stone-100/70 border border-stone-200 text-xs text-stone-700 flex items-start space-x-2.5">
-              <Brain className="w-4 h-4 text-stone-900 mt-0.5 shrink-0" />
+            <div className="p-4 rounded-lg bg-stone-100/70 dark:bg-zinc-850 border border-stone-200 dark:border-zinc-800 text-xs text-stone-700 dark:text-zinc-300 flex items-start space-x-2.5">
+              <Brain className="w-4 h-4 text-stone-900 dark:text-zinc-100 mt-0.5 shrink-0" />
               <div>
-                <strong className="text-stone-900">Academic Memorization Engine</strong>: Practice reproducing complete definitions, paragraphs, and sequences with 5 cognitive recall modes. No gamification or superficial MCQs.
+                <strong className="text-stone-900 dark:text-zinc-100">Academic Memorization Engine</strong>: Practice reproducing complete definitions, paragraphs, and sequences with 5 cognitive recall modes. No gamification or superficial MCQs.
               </div>
             </div>
 
             {exercises.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-stone-200 rounded-lg text-stone-500 text-xs space-y-3">
+              <div className="p-8 text-center border border-dashed border-stone-200 dark:border-zinc-800 rounded-lg text-stone-500 dark:text-zinc-400 text-xs space-y-3">
                 <p>No memorization exercises generated yet for this topic.</p>
                 <button
                   onClick={() => setIsGeneratorOpen(true)}
-                  className="px-4 py-2 rounded bg-stone-900 text-white text-xs font-medium hover:bg-stone-800 transition-colors"
+                  className="px-4 py-2 rounded bg-stone-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium hover:bg-stone-800 dark:hover:bg-white transition-colors"
                 >
                   Generate Memorization Exercises
                 </button>
@@ -341,37 +358,37 @@ export const TopicWorkspacePage: React.FC = () => {
 
         {/* Tab C: Conceptual Exercises */}
         {activeTab === 'conceptual' && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6 max-w-4xl text-stone-900 dark:text-zinc-100">
             {conceptualEx ? (
-              <div className="border border-stone-200 rounded-lg p-6 bg-white space-y-4">
-                <div className="flex items-center space-x-2 pb-3 border-b border-stone-100">
-                  <span className="px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded bg-stone-100 text-stone-700">
+              <div className="border border-stone-200 dark:border-zinc-800 rounded-lg p-6 bg-white dark:bg-[#18181b] space-y-4">
+                <div className="flex items-center space-x-2 pb-3 border-b border-stone-100 dark:border-zinc-800">
+                  <span className="px-2 py-0.5 text-[10px] font-mono uppercase font-bold rounded bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300">
                     Conceptual Relationship Analysis
                   </span>
-                  <span className="text-xs font-semibold text-stone-800">{conceptualEx.title}</span>
+                  <span className="text-xs font-semibold text-stone-800 dark:text-zinc-200">{conceptualEx.title}</span>
                 </div>
-                <p className="text-sm font-medium font-serif text-stone-900 leading-relaxed">
+                <p className="text-sm font-medium font-serif text-stone-900 dark:text-zinc-100 leading-relaxed">
                   {conceptualEx.payload.prompt}
                 </p>
-                <div className="p-4 bg-stone-50 border border-stone-200 rounded-lg space-y-2 text-xs">
-                  <span className="font-semibold text-stone-700 block">Critical Dimensions to Analyze:</span>
-                  <ul className="list-disc list-inside space-y-1 text-stone-600">
+                <div className="p-4 bg-stone-50 dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-lg space-y-2 text-xs">
+                  <span className="font-semibold text-stone-700 dark:text-zinc-300 block">Critical Dimensions to Analyze:</span>
+                  <ul className="list-disc list-inside space-y-1 text-stone-600 dark:text-zinc-400">
                     {conceptualEx.payload.expected_aspects?.map((asp: string, idx: number) => (
                       <li key={idx}>{asp}</li>
                     ))}
                   </ul>
                 </div>
-                <div className="p-4 bg-stone-100/60 border border-stone-200 rounded-lg space-y-1 text-xs">
-                  <span className="font-semibold text-stone-600 uppercase tracking-wider text-[10px]">Sample Academic Formulation:</span>
-                  <p className="text-stone-800 font-serif leading-relaxed">{conceptualEx.payload.sample_solution}</p>
+                <div className="p-4 bg-stone-100/60 dark:bg-zinc-850 border border-stone-200 dark:border-zinc-800 rounded-lg space-y-1 text-xs">
+                  <span className="font-semibold text-stone-600 dark:text-zinc-400 uppercase tracking-wider text-[10px]">Sample Academic Formulation:</span>
+                  <p className="text-stone-800 dark:text-zinc-200 font-serif leading-relaxed">{conceptualEx.payload.sample_solution}</p>
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center border border-dashed border-stone-200 rounded-lg text-stone-500 text-xs space-y-2">
+              <div className="p-8 text-center border border-dashed border-stone-200 dark:border-zinc-800 rounded-lg text-stone-500 dark:text-zinc-400 text-xs space-y-2">
                 <p>No conceptual exercises generated for this topic yet.</p>
                 <button
                   onClick={() => setIsGeneratorOpen(true)}
-                  className="px-3 py-1.5 rounded bg-stone-900 text-white text-xs font-medium hover:bg-stone-800"
+                  className="px-3 py-1.5 rounded bg-stone-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium hover:bg-stone-800 dark:hover:bg-white"
                 >
                   Generate Conceptual Exercises
                 </button>
@@ -395,6 +412,15 @@ export const TopicWorkspacePage: React.FC = () => {
           <TopicAssessmentView
             topicId={topicDetail.id}
             topicTitle={topicDetail.title}
+          />
+        )}
+
+        {/* Tab F: MCQ Assessment */}
+        {activeTab === 'mcq' && (
+          <MCQAssessmentView
+            topicId={topicDetail.id}
+            topicTitle={topicDetail.title}
+            onMasteryChange={loadAllTopicData}
           />
         )}
       </div>

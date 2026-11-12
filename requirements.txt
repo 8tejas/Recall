@@ -1,0 +1,4 @@
+# Root requirements.txt — used by Render's backend build command.
+# Installs from the backend/requirements.txt file.
+-r backend/requirements.txt
+

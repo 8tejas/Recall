@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.api.deps import get_current_user
 from backend.app.models.all_models import (
-    User, Subject, Unit, Topic, LearningMaterial, GenerationJob, Exercise, Question, utc_now
+    User, Subject, Unit, Topic, LearningMaterial, GenerationJob, Exercise, Question, MCQQuestion, utc_now
 )
 from backend.app.schemas.all_schemas import (
     TopicOut,
@@ -46,6 +46,7 @@ def get_topic_detail(
         "id": topic.id,
         "title": topic.title,
         "description": topic.description,
+        "personal_notes": topic.personal_notes or "",
         "order_index": topic.order_index,
         "status": topic.status,
         "created_at": topic.created_at,
@@ -60,6 +61,80 @@ def get_topic_detail(
             "code": subject.code,
         }
     }
+
+@router.get("/{id}/personal-notes")
+def get_personal_notes(
+    id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve strictly private personal notes. Never sent to AI."""
+    topic = (
+        db.query(Topic)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(Topic.id == id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return {"topic_id": topic.id, "personal_notes": topic.personal_notes or ""}
+
+@router.put("/{id}/personal-notes")
+def update_personal_notes(
+    id: str,
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update strictly private personal notes. Never sent to AI."""
+    topic = (
+        db.query(Topic)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(Topic.id == id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    topic.personal_notes = payload.get("personal_notes", "")
+    db.commit()
+    db.refresh(topic)
+    return {"topic_id": topic.id, "personal_notes": topic.personal_notes or "", "message": "Private notes saved"}
+
+@router.post("/{id}/personal-notes/append")
+def append_personal_notes(
+    id: str,
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Append note text to existing private notes without overwriting."""
+    topic = (
+        db.query(Topic)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(Topic.id == id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    note_to_append = payload.get("note_to_append", "").strip()
+    if not note_to_append:
+        raise HTTPException(status_code=400, detail="Note text cannot be empty")
+    
+    current_notes = topic.personal_notes or ""
+    if current_notes:
+        updated = f"{current_notes}\n\n---\n\n{note_to_append}"
+    else:
+        updated = note_to_append
+    
+    topic.personal_notes = updated
+    db.commit()
+    db.refresh(topic)
+    return {"topic_id": topic.id, "personal_notes": topic.personal_notes, "message": "Appended to private notes"}
 
 @router.put("/{id}", response_model=TopicOut)
 def update_topic(
@@ -86,6 +161,8 @@ def update_topic(
         topic.order_index = topic_in.order_index
     if topic_in.status is not None:
         topic.status = topic_in.status
+    if topic_in.personal_notes is not None:
+        topic.personal_notes = topic_in.personal_notes
 
     db.commit()
     db.refresh(topic)
@@ -311,6 +388,26 @@ async def generate_topic_resource(
                     essential_keywords=q.get("essential_keywords", []),
                     key_points=q.get("key_points", []),
                     structure_guide=q.get("structure_guide", [])
+                ))
+
+        elif req.resource_type == "topic_mcqs":
+            source_notes = (
+                db.query(LearningMaterial)
+                .filter(LearningMaterial.topic_id == topic.id)
+                .first()
+            )
+            unit_topics_str = ", ".join([t.title for t in unit.topics])
+            source_text = source_notes.markdown_text if source_notes else f"Subject: {subject.name}\nUnit: {unit.title} (Curriculum topics: {unit_topics_str})\nTopic: {topic.title}"
+            mcqs_data = await ai.generate_mcqs(topic.title, unit.title, subject.name, source_text, num_questions=5)
+
+            for item in mcqs_data:
+                db.add(MCQQuestion(
+                    topic_id=topic.id,
+                    question_text=item.get("question", ""),
+                    options=item.get("options", []),
+                    correct_option_id=item.get("correct_option_id", "A"),
+                    explanation=item.get("explanation", ""),
+                    difficulty=item.get("difficulty", "medium"),
                 ))
 
         job.status = "completed"

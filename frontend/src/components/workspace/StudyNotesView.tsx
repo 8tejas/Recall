@@ -3,13 +3,16 @@ import { Edit3, Check, Save, RotateCcw, AlertCircle, FileText, BookOpen } from '
 import { LearningMaterial } from '../../types';
 import { updateMaterial } from '../../api/client';
 import { MarkdownView } from '../common/MarkdownView';
+import { PersonalNotesView } from './PersonalNotesView';
 
 interface Props {
+  topicId: string;
+  topicTitle: string;
   materials: LearningMaterial[];
   onMaterialUpdated: () => void;
 }
 
-export const StudyNotesView: React.FC<Props> = ({ materials, onMaterialUpdated }) => {
+export const StudyNotesView: React.FC<Props> = ({ topicId, topicTitle, materials, onMaterialUpdated }) => {
   const [activeIdx, setActiveIdx] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editText, setEditText] = useState<string>('');
@@ -17,8 +20,11 @@ export const StudyNotesView: React.FC<Props> = ({ materials, onMaterialUpdated }
 
   if (!materials || materials.length === 0) {
     return (
-      <div className="p-8 text-center border border-dashed border-stone-200 dark:border-stone-800 rounded-lg text-stone-500 dark:text-stone-400 text-xs">
-        No study materials generated for this topic yet. Click "Generate Resources" above to synthesize detailed academic notes.
+      <div className="space-y-6 max-w-4xl">
+        <div className="p-8 text-center border border-dashed border-stone-200 dark:border-zinc-800 rounded-xl text-stone-500 dark:text-zinc-400 text-xs bg-white dark:bg-[#18181b]">
+          No AI study notes generated for this topic yet. Click "Generate Resources" above to synthesize detailed academic notes.
+        </div>
+        <PersonalNotesView topicId={topicId} topicTitle={topicTitle} />
       </div>
     );
   }
@@ -123,6 +129,9 @@ export const StudyNotesView: React.FC<Props> = ({ materials, onMaterialUpdated }
           <MarkdownView content={currentMat.markdown_text} />
         )}
       </div>
+
+      {/* Private Student Notes Component */}
+      <PersonalNotesView topicId={topicId} topicTitle={topicTitle} />
     </div>
   );
 };

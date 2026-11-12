@@ -41,6 +41,9 @@ export const AppLayout: React.FC = () => {
 
   useEffect(() => {
     initTheme();
+  }, []);
+
+  useEffect(() => {
     loadUser();
     loadNavData();
   }, [location.pathname]);
@@ -51,19 +54,19 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 overflow-hidden font-sans transition-colors duration-200">
+    <div className="flex h-screen w-full bg-stone-50 dark:bg-[#121214] text-stone-900 dark:text-zinc-100 overflow-hidden font-sans transition-colors duration-150">
       {/* Notion / Linear Academic Minimalist Sidebar */}
-      <aside className="w-64 border-r border-stone-200 dark:border-stone-800 bg-stone-100/70 dark:bg-stone-900/90 flex flex-col justify-between select-none">
+      <aside className="w-64 border-r border-stone-200 dark:border-zinc-800 bg-stone-100/70 dark:bg-[#18181b] flex flex-col justify-between select-none">
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Brand header */}
-          <div className="p-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
+          <div className="p-4 border-b border-stone-200/80 dark:border-zinc-800 flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-7 h-7 rounded-md bg-stone-900 dark:bg-stone-100 text-stone-50 dark:text-stone-950 flex items-center justify-center font-bold text-sm tracking-wider shadow-sm">
+              <div className="w-7 h-7 rounded-md bg-stone-900 dark:bg-zinc-100 text-stone-50 dark:text-zinc-900 flex items-center justify-center font-bold text-sm tracking-wider shadow-sm">
                 R
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-stone-900 dark:text-stone-100 tracking-tight text-sm">Recall</span>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono tracking-wider">ACADEMIC MEMORY</span>
+                <span className="font-semibold text-stone-900 dark:text-zinc-100 tracking-tight text-sm">Recall</span>
+                <span className="text-[10px] text-stone-500 dark:text-zinc-400 font-mono tracking-wider">ACADEMIC MEMORY</span>
               </div>
             </div>
 
@@ -71,9 +74,9 @@ export const AppLayout: React.FC = () => {
             <button
               onClick={toggleTheme}
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              className="p-1.5 rounded-md text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+              className="p-1.5 rounded-md text-stone-500 hover:text-stone-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-stone-200 dark:hover:bg-zinc-800 transition-colors"
             >
-              {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
             </button>
           </div>
 
@@ -84,13 +87,13 @@ export const AppLayout: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-semibold'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200/60 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                    ? 'bg-stone-200 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-semibold'
+                    : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-zinc-100'
                 }`
               }
             >
               <div className="flex items-center space-x-2">
-                <Compass className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <Compass className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
                 <span>Dashboard</span>
               </div>
             </NavLink>
@@ -100,13 +103,13 @@ export const AppLayout: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-semibold'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200/60 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                    ? 'bg-stone-200 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-semibold'
+                    : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-zinc-100'
                 }`
               }
             >
               <div className="flex items-center space-x-2">
-                <Calendar className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <Calendar className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
                 <span>Spaced Revision</span>
               </div>
               {dueCount > 0 && (
@@ -121,13 +124,13 @@ export const AppLayout: React.FC = () => {
               className={({ isActive }) =>
                 `flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-semibold'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200/60 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                    ? 'bg-stone-200 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-semibold'
+                    : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-zinc-100'
                 }`
               }
             >
               <div className="flex items-center space-x-2">
-                <SettingsIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <SettingsIcon className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
                 <span>Engine & Models</span>
               </div>
             </NavLink>
@@ -135,13 +138,13 @@ export const AppLayout: React.FC = () => {
 
           {/* Subjects Directory */}
           <div className="px-3 pt-4 pb-1 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider font-mono">
               Subjects & Syllabi
             </span>
             <button
               onClick={() => navigate('/subjects/new')}
               title="Add New Syllabus"
-              className="p-1 hover:bg-stone-200 dark:hover:bg-stone-800 rounded text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+              className="p-1 hover:bg-stone-200 dark:hover:bg-zinc-800 rounded text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -151,33 +154,32 @@ export const AppLayout: React.FC = () => {
           <div className="flex-1 overflow-y-auto px-3 space-y-0.5">
             {subjects.length === 0 ? (
               <div className="px-2 py-4 text-center">
-                <p className="text-xs text-stone-400 dark:text-stone-500">No subjects yet.</p>
+                <p className="text-xs text-stone-400 dark:text-zinc-500">No subjects yet.</p>
                 <button
                   onClick={() => navigate('/subjects/new')}
-                  className="mt-2 text-xs text-stone-800 dark:text-stone-200 underline hover:text-stone-900 dark:hover:text-white font-medium"
+                  className="mt-2 text-xs text-stone-800 dark:text-zinc-200 underline hover:text-stone-900 dark:hover:text-white font-medium"
                 >
                   + Add Syllabus
                 </button>
               </div>
             ) : (
               subjects.map((sub) => {
-                const isExpanded = !!expandedSubjects[sub.id];
                 return (
                   <div key={sub.id} className="group">
                     <div
                       onClick={() => navigate(`/subjects/${sub.id}`)}
                       className={`flex items-center justify-between px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors ${
                         location.pathname.startsWith(`/subjects/${sub.id}`)
-                          ? 'bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-medium'
-                          : 'text-stone-700 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-stone-100'
+                          ? 'bg-stone-200 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 font-medium'
+                          : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-zinc-100'
                       }`}
                     >
                       <div className="flex items-center space-x-1.5 truncate">
-                        <BookOpen className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <BookOpen className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 shrink-0" />
                         <span className="truncate">{sub.name}</span>
                       </div>
                       {sub.code && (
-                        <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono shrink-0 ml-1">
+                        <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono shrink-0 ml-1">
                           {sub.code}
                         </span>
                       )}
@@ -190,15 +192,15 @@ export const AppLayout: React.FC = () => {
         </div>
 
         {/* Footer profile & system status */}
-        <div className="p-3 border-t border-stone-200/80 dark:border-stone-800 bg-stone-100/40 dark:bg-stone-900/40">
-          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+        <div className="p-3 border-t border-stone-200/80 dark:border-zinc-800 bg-stone-100/40 dark:bg-[#151517]">
+          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-zinc-400">
             <div className="flex items-center space-x-2 truncate">
-              <div className="w-6 h-6 rounded-full bg-stone-300 dark:bg-stone-700 text-stone-700 dark:text-stone-200 flex items-center justify-center font-bold text-[10px]">
+              <div className="w-6 h-6 rounded-full bg-stone-300 dark:bg-zinc-700 text-stone-700 dark:text-zinc-200 flex items-center justify-center font-bold text-[10px]">
                 {user?.name?.[0] || 'S'}
               </div>
-              <span className="truncate text-stone-700 dark:text-stone-200 font-medium">{user?.name || 'Academic Scholar'}</span>
+              <span className="truncate text-stone-700 dark:text-zinc-200 font-medium">{user?.name || 'Academic Scholar'}</span>
             </div>
-            <span className="text-[10px] bg-stone-200/80 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-1.5 py-0.5 rounded font-mono">
+            <span className="text-[10px] bg-stone-200/80 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 px-1.5 py-0.5 rounded font-mono">
               FSRS
             </span>
           </div>
@@ -206,7 +208,7 @@ export const AppLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Viewport */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-stone-950">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#121214]">
         <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>

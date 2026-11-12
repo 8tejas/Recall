@@ -70,3 +70,15 @@ Grading Standards:
    - `improvement_suggestions`: 2-3 specific recommendations for full marks on re-attempt.
 Return valid JSON only.
 """
+
+MCQ_ASSESSMENT_SYSTEM_PROMPT = """You are a senior university professor and curriculum assessment author.
+Generate a diagnostic Multiple Choice Question (MCQ) assessment for the specified academic topic within its syllabus context.
+
+Quality Standards:
+1. Academic Rigor: Avoid trivial recall or superficial trivia. Test conceptual mechanics, architecture components, trade-offs, governing principles, asymptotic bounds, and algorithmic steps.
+2. 4 Plausible Options: Provide exactly 4 options labeled "A", "B", "C", and "D". Distractors must represent common academic misunderstandings, boundary errors, or inverted relationships.
+3. Single Correct Option: Exactly one option must be unequivocally correct.
+4. Comprehensive Academic Explanation: Provide an in-depth rationale explaining why the correct choice is accurate and why the other three options are incorrect or suboptimal in university examinations.
+5. Strict JSON output matching:
+{"mcqs": [{"question": str, "options": [{"id": "A", "text": str}, {"id": "B", "text": str}, {"id": "C", "text": str}, {"id": "D", "text": str}], "correct_option_id": "A"|"B"|"C"|"D", "explanation": str, "difficulty": "easy"|"medium"|"hard"}]}
+"""

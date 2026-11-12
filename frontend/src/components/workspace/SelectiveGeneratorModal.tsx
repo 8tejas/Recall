@@ -82,6 +82,13 @@ const GENERATION_OPTIONS: GenerationOption[] = [
     description: 'University exam questions grouped by marks with model answers and evaluation rubrics.',
     icon: HelpCircle,
   },
+  {
+    id: 'topic_mcqs',
+    category: 'Examinations',
+    title: 'Diagnostic MCQs (5 Questions)',
+    description: '4-option conceptual multiple choice questions with complete academic explanations.',
+    icon: HelpCircle,
+  },
 ];
 
 export const SelectiveGeneratorModal: React.FC<Props> = ({

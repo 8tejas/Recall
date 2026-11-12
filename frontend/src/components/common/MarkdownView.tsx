@@ -38,3 +38,4 @@ export const MarkdownView: React.FC<Props> = ({ content, className = '' }) => {
     </div>
   );
 };
+

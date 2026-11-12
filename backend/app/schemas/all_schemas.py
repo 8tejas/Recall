@@ -64,12 +64,14 @@ class TopicUpdate(BaseModel):
     description: Optional[str] = None
     order_index: Optional[int] = None
     status: Optional[str] = None
+    personal_notes: Optional[str] = None
 
 class TopicOut(BaseModel):
     id: str
     unit_id: str
     title: str
     description: Optional[str] = None
+    personal_notes: Optional[str] = ""
     order_index: int
     status: str
     created_at: datetime
@@ -330,6 +332,73 @@ class AssessmentResultOut(BaseModel):
     breakdown: Dict[str, Any]
     weak_areas: List[str]
     recommended_revision: List[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ----------------- Personal Notes Schemas -----------------
+class PersonalNotesUpdate(BaseModel):
+    personal_notes: str
+
+class PersonalNotesAppend(BaseModel):
+    note_to_append: str
+
+class PersonalNotesOut(BaseModel):
+    topic_id: str
+    personal_notes: str
+
+# ----------------- MCQ Schemas -----------------
+class MCQOption(BaseModel):
+    id: str  # "A", "B", "C", "D"
+    text: str
+
+class MCQItem(BaseModel):
+    question: str
+    options: List[MCQOption]
+    correct_option_id: str  # "A", "B", "C", "D"
+    explanation: str
+    difficulty: Optional[str] = "medium"
+
+class MCQQuestionOut(BaseModel):
+    id: str
+    topic_id: str
+    question_text: str
+    options: List[MCQOption]
+    correct_option_id: Optional[str] = None
+    explanation: Optional[str] = None
+    difficulty: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class MCQGenerateRequest(BaseModel):
+    num_questions: Optional[int] = 5
+
+class MCQSubmissionItem(BaseModel):
+    question_id: str
+    selected_option_id: str
+
+class MCQSubmitRequest(BaseModel):
+    answers: List[MCQSubmissionItem]
+
+class MCQQuestionFeedback(BaseModel):
+    question_id: str
+    question_text: str
+    options: List[MCQOption]
+    selected_option_id: str
+    correct_option_id: str
+    is_correct: bool
+    explanation: str
+
+class MCQAssessmentResultOut(BaseModel):
+    id: str
+    topic_id: str
+    score_percentage: float
+    total_questions: int
+    correct_count: int
+    detailed_feedback: List[MCQQuestionFeedback]
     created_at: datetime
 
     class Config:

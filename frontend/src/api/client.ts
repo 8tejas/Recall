@@ -10,6 +10,8 @@ import {
   RevisionItem,
   DashboardStats,
   ParsedSyllabus,
+  MCQQuestion,
+  MCQAssessmentResult,
 } from '../types';
 
 export const api = axios.create({
@@ -163,5 +165,45 @@ export const submitAssessment = async (topicId: string, answers: Array<{ item_id
 
 export const fetchLatestAssessment = async (topicId: string): Promise<any> => {
   const res = await api.get(`/topics/${topicId}/assessment/latest`);
+  return res.data;
+};
+
+// ----------------- Personal Private Notes (Strictly Offline & Private) -----------------
+export const fetchPersonalNotes = async (topicId: string): Promise<{ topic_id: string; personal_notes: string }> => {
+  const res = await api.get(`/topics/${topicId}/personal-notes`);
+  return res.data;
+};
+
+export const updatePersonalNotes = async (topicId: string, personalNotes: string): Promise<{ topic_id: string; personal_notes: string; message: string }> => {
+  const res = await api.put(`/topics/${topicId}/personal-notes`, { personal_notes: personalNotes });
+  return res.data;
+};
+
+export const appendPersonalNote = async (topicId: string, noteToAppend: string): Promise<{ topic_id: string; personal_notes: string; message: string }> => {
+  const res = await api.post(`/topics/${topicId}/personal-notes/append`, { note_to_append: noteToAppend });
+  return res.data;
+};
+
+// ----------------- Topic MCQ Assessment -----------------
+export const fetchTopicMCQs = async (topicId: string): Promise<MCQQuestion[]> => {
+  const res = await api.get(`/topics/${topicId}/mcqs`);
+  return res.data;
+};
+
+export const generateTopicMCQs = async (topicId: string, numQuestions: number = 5): Promise<MCQQuestion[]> => {
+  const res = await api.post(`/topics/${topicId}/mcqs/generate`, { num_questions: numQuestions });
+  return res.data;
+};
+
+export const submitMCQAssessment = async (
+  topicId: string,
+  answers: Array<{ question_id: string; selected_option_id: string }>
+): Promise<MCQAssessmentResult> => {
+  const res = await api.post(`/topics/${topicId}/mcqs/submit`, { answers });
+  return res.data;
+};
+
+export const fetchLatestMCQAssessment = async (topicId: string): Promise<MCQAssessmentResult | null> => {
+  const res = await api.get(`/topics/${topicId}/mcqs/latest-assessment`);
   return res.data;
 };

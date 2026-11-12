@@ -10,6 +10,7 @@ export interface Topic {
   unit_id: string;
   title: string;
   description?: string;
+  personal_notes?: string;
   order_index: number;
   status: 'not_started' | 'in_progress' | 'mastered';
   created_at: string;
@@ -190,4 +191,40 @@ export interface ParsedSyllabus {
   code?: string;
   description?: string;
   units: ParsedUnitItem[];
+}
+
+export interface MCQOption {
+  id: string; // "A", "B", "C", "D"
+  text: string;
+}
+
+export interface MCQQuestion {
+  id: string;
+  topic_id: string;
+  question_text: string;
+  options: MCQOption[];
+  correct_option_id?: string;
+  explanation?: string;
+  difficulty: string;
+  created_at: string;
+}
+
+export interface MCQQuestionFeedback {
+  question_id: string;
+  question_text: string;
+  options: MCQOption[];
+  selected_option_id: string;
+  correct_option_id: string;
+  is_correct: boolean;
+  explanation: string;
+}
+
+export interface MCQAssessmentResult {
+  id: string;
+  topic_id: string;
+  score_percentage: number;
+  total_questions: number;
+  correct_count: number;
+  detailed_feedback: MCQQuestionFeedback[];
+  created_at: string;
 }

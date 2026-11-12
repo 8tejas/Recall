@@ -19,6 +19,7 @@ from backend.app.prompts.academic_prompts import (
     MEMORIZATION_GENERATOR_SYSTEM_PROMPT,
     EXAM_QUESTIONS_SYSTEM_PROMPT,
     ANSWER_EVALUATION_SYSTEM_PROMPT,
+    MCQ_ASSESSMENT_SYSTEM_PROMPT,
 )
 from backend.app.services.memorization_engine import MemorizationEngine
 
@@ -70,6 +71,18 @@ class AIProviderInterface(ABC):
         self, topic_title: str, source_text: str, distribution: Dict[str, int]
     ) -> Dict[str, Any]:
         """Generate comprehensive diagnostic assessment items."""
+        pass
+
+    @abstractmethod
+    async def generate_mcqs(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        source_text: Optional[str] = None,
+        num_questions: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Generate university-level diagnostic MCQs with 4 options and detailed explanations."""
         pass
 
 
@@ -506,6 +519,160 @@ class AcademicFallbackProvider(AIProviderInterface):
             ]
         }
 
+    async def generate_mcqs(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        source_text: Optional[str] = None,
+        num_questions: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """
+        Deterministic, university-level multiple choice questions with 4 options
+        and complete pedagogical rationales.
+        """
+        context_label = unit_context or subject_context or "this domain"
+        all_mcqs = [
+            {
+                "question": f"What is the foundational academic principle that governs '{topic_title}' within {context_label}?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": f"It enforces state consistency, deterministic processing, and bounded complexity across valid inputs."
+                    },
+                    {
+                        "id": "B",
+                        "text": "It acts as an ad-hoc heuristic cache with unbounded asymptotic memory growth."
+                    },
+                    {
+                        "id": "C",
+                        "text": "It operates exclusively as an unverified UI visualizer without formal guarantees."
+                    },
+                    {
+                        "id": "D",
+                        "text": "It discards boundary invariants to prioritize non-deterministic concurrency."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: In academic curricula, {topic_title} is formally defined as a systematic mechanism "
+                    f"guaranteeing state consistency, bounded execution steps, and determinism. Options B, C, and D describe anti-patterns "
+                    f"violating foundational invariants."
+                ),
+                "difficulty": "medium"
+            },
+            {
+                "question": f"In the canonical architecture of '{topic_title}', which subsystem handles boundary verification and input normalization?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Output State Synthesizer"
+                    },
+                    {
+                        "id": "B",
+                        "text": "Input Interface and Constraint Validator"
+                    },
+                    {
+                        "id": "C",
+                        "text": "Asynchronous Memory Reclaimer"
+                    },
+                    {
+                        "id": "D",
+                        "text": "Dynamic Entropy Injector"
+                    }
+                ],
+                "correct_option_id": "B",
+                "explanation": (
+                    f"Option B is correct: Standard architectural decompose of {topic_title} places input verification and parameter "
+                    f"normalization at the Input Interface before transformations occur in the core processor. Option A formats results, "
+                    f"while C and D are irrelevant subsystem names."
+                ),
+                "difficulty": "medium"
+            },
+            {
+                "question": f"Which condition guarantees finite termination and mathematical resolution for '{topic_title}'?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Unsynchronized arbitrary thread scheduling without synchronization barriers."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Omission of cost function evaluations during iterative descent."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Strict preservation of domain invariants and monotonic progress toward convergence."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Infinite recursive delegation without an explicit base case."
+                    }
+                ],
+                "correct_option_id": "C",
+                "explanation": (
+                    f"Option C is correct: Formal proofs for {topic_title} require monotonic progress (or bounded decrease of a Lyapunov function) "
+                    f"and invariant preservation to guarantee finite termination. Options A, B, and D lead to divergence, livelocks, or infinite loops."
+                ),
+                "difficulty": "hard"
+            },
+            {
+                "question": f"What is the characteristic engineering trade-off associated with implementing '{topic_title}'?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Initial setup configuration latency in exchange for long-term asymptotic efficiency and reliability."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Zero computational cost accompanied by total loss of data integrity."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Linear degradation with infinite space complexity."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Complete inability to operate in modern distributed environments."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: {topic_title} introduces structured overhead during initialization to achieve bounded, "
+                    f"predictable asymptotic execution. Options B, C, and D are false claims about its operational behavior."
+                ),
+                "difficulty": "easy"
+            },
+            {
+                "question": f"When addressing a university examination question on '{topic_title}', which justification is essential for securing full marks?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Providing only an informal non-technical opinion without citing mechanisms."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Citing governing axioms, illustrating the structural component interaction, and defining invariants."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Listing code snippets from proprietary software without conceptual explanations."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Omitting limitations and boundary condition analyses."
+                    }
+                ],
+                "correct_option_id": "B",
+                "explanation": (
+                    f"Option B is correct: University marking schemes evaluate answers based on technical terminology, clear structural diagrams, "
+                    f"and rigorous theoretical justifications of {topic_title}."
+                ),
+                "difficulty": "medium"
+            }
+        ]
+        return all_mcqs[:num_questions]
+
 
 class GroqProvider(AIProviderInterface):
     """
@@ -709,6 +876,38 @@ class GroqProvider(AIProviderInterface):
         except Exception as e:
             logger.warning(f"Groq generate_topic_assessment error, using fallback: {e}")
             return await self.fallback_engine.generate_topic_assessment(topic_title, source_text, distribution)
+
+    async def generate_mcqs(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        source_text: Optional[str] = None,
+        num_questions: int = 5,
+    ) -> List[Dict[str, Any]]:
+        prompt = (
+            f"Generate {num_questions} university-examination Multiple Choice Questions (MCQs) for the topic '{topic_title}' "
+            f"under unit '{unit_context or 'this unit'}' in course '{subject_context or 'Academic Course'}'.\n"
+            f"Reference context:\n{(source_text or '')[:2000]}\n\n"
+            f"Guidelines:\n"
+            f"- 4 plausible options labeled A, B, C, D.\n"
+            f"- Exactly 1 correct option.\n"
+            f"- In-depth explanation of why the correct option is right and why the other options are wrong.\n\n"
+            f"Return JSON adhering strictly to:\n"
+            f'{{"mcqs": [{{"question": str, "options": [{{"id": "A", "text": str}}, {{"id": "B", "text": str}}, {{"id": "C", "text": str}}, {{"id": "D", "text": str}}], "correct_option_id": "A"|"B"|"C"|"D", "explanation": str, "difficulty": "medium"}}]}}'
+        )
+        try:
+            res = await self._call_groq_json([
+                {"role": "system", "content": MCQ_ASSESSMENT_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ])
+            mcqs = res.get("mcqs", [])
+            if mcqs and isinstance(mcqs, list) and len(mcqs) > 0:
+                return mcqs[:num_questions]
+            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions)
+        except Exception as e:
+            logger.warning(f"Groq generate_mcqs error, falling back to local academic engine: {e}")
+            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions)
 
 
 # Provider factory

@@ -7,12 +7,13 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
+  // Default to light mode (false)
   isDark: false,
 
   initTheme: () => {
     const saved = localStorage.getItem('recall_theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved ? saved === 'dark' : prefersDark;
+    // Default to light unless user explicitly saved 'dark'
+    const isDark = saved === 'dark';
 
     if (isDark) {
       document.documentElement.classList.add('dark');
