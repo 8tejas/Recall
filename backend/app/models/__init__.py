@@ -1,0 +1,31 @@
+from backend.app.models.all_models import (
+    User,
+    Subject,
+    Unit,
+    Topic,
+    LearningMaterial,
+    GenerationJob,
+    Exercise,
+    Question,
+    Attempt,
+    ReviewSchedule,
+    AssessmentResult,
+    gen_uuid,
+    utc_now,
+)
+
+__all__ = [
+    "User",
+    "Subject",
+    "Unit",
+    "Topic",
+    "LearningMaterial",
+    "GenerationJob",
+    "Exercise",
+    "Question",
+    "Attempt",
+    "ReviewSchedule",
+    "AssessmentResult",
+    "gen_uuid",
+    "utc_now",
+]
