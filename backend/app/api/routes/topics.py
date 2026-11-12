@@ -149,13 +149,18 @@ async def generate_topic_resource(
             "comprehensive_notes", "quick_revision", "definitions",
             "classifications", "comparisons", "examples"
         ]:
-            # Generate study material
+            # Collect full unit topic roadmap for curriculum context
+            unit_topics = [t.title for t in unit.topics]
+
+            # Generate study material with full unit curriculum awareness
             result = await ai.generate_study_notes(
                 topic_title=topic.title,
                 unit_context=unit.title,
                 subject_context=subject.name,
                 resource_type=req.resource_type,
-                custom_focus=req.custom_focus
+                custom_focus=req.custom_focus,
+                unit_topics=unit_topics,
+                unit_description=unit.description,
             )
             # Find existing material or create new
             mat = (
@@ -194,7 +199,9 @@ async def generate_topic_resource(
                 .order_by(LearningMaterial.created_at.desc())
                 .first()
             )
-            source_text = existing_notes.markdown_text if existing_notes else f"Academic Topic: {topic.title} in {unit.title}"
+            unit_topics_str = ", ".join([t.title for t in unit.topics])
+            fallback_context = f"Subject: {subject.name}\nUnit: {unit.title} (Topics: {unit_topics_str})\nTopic: {topic.title}"
+            source_text = existing_notes.markdown_text if existing_notes else fallback_context
             mem_data = await ai.generate_memorization_items(topic.title, source_text)
 
             # Clear older exercises of these modes to keep fresh high-yield exercises
@@ -288,7 +295,8 @@ async def generate_topic_resource(
                 .filter(LearningMaterial.topic_id == topic.id)
                 .first()
             )
-            source_text = source_notes.markdown_text if source_notes else f"Academic Topic: {topic.title}"
+            unit_topics_str = ", ".join([t.title for t in unit.topics])
+            source_text = source_notes.markdown_text if source_notes else f"Subject: {subject.name}\nUnit: {unit.title} (Curriculum topics: {unit_topics_str})\nTopic: {topic.title}"
             questions_data = await ai.generate_exam_questions(topic.title, source_text)
 
             # Clear older questions for this topic

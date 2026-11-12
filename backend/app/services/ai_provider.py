@@ -32,9 +32,16 @@ class AIProviderInterface(ABC):
 
     @abstractmethod
     async def generate_study_notes(
-        self, topic_title: str, unit_context: str, subject_context: str, resource_type: str, custom_focus: Optional[str] = None
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        resource_type: str,
+        custom_focus: Optional[str] = None,
+        unit_topics: Optional[List[str]] = None,
+        unit_description: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Generate academic notes or specific learning resources."""
+        """Generate academic notes or specific learning resources with full unit syllabus context."""
         pass
 
     @abstractmethod
@@ -128,7 +135,14 @@ class AcademicFallbackProvider(AIProviderInterface):
         }
 
     async def generate_study_notes(
-        self, topic_title: str, unit_context: str, subject_context: str, resource_type: str, custom_focus: Optional[str] = None
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        resource_type: str,
+        custom_focus: Optional[str] = None,
+        unit_topics: Optional[List[str]] = None,
+        unit_description: Optional[str] = None,
     ) -> Dict[str, Any]:
         # Formulate academic text matching the resource type
         if resource_type == "definitions":
@@ -572,14 +586,29 @@ class GroqProvider(AIProviderInterface):
             return await self.fallback_engine.parse_syllabus(raw_syllabus)
 
     async def generate_study_notes(
-        self, topic_title: str, unit_context: str, subject_context: str, resource_type: str, custom_focus: Optional[str] = None
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        resource_type: str,
+        custom_focus: Optional[str] = None,
+        unit_topics: Optional[List[str]] = None,
+        unit_description: Optional[str] = None,
     ) -> Dict[str, Any]:
+        unit_topics_str = ", ".join(unit_topics) if unit_topics else "Topic list not specified"
         prompt = (
-            f"Generate academic study material for the topic '{topic_title}'.\n"
-            f"Context: Unit '{unit_context}', Subject '{subject_context}'.\n"
-            f"Resource Type: '{resource_type}'.\n"
-            f"Custom Focus: '{custom_focus or 'Standard academic university scope'}'.\n\n"
-            f"Return JSON adhering to schema:\n"
+            f"Generate university-standard academic study material for the target topic: '{topic_title}'.\n\n"
+            f"CURRICULUM HIERARCHY CONTEXT:\n"
+            f"- Subject: '{subject_context}'\n"
+            f"- Unit: '{unit_context}'\n"
+            f"- Unit Description/Scope: '{unit_description or 'Standard syllabus module'}'\n"
+            f"- Complete Topics Roadmap in this Unit: [{unit_topics_str}]\n\n"
+            f"GENERATION PARAMETERS:\n"
+            f"- Resource Type: '{resource_type}'.\n"
+            f"- Focus deeply and authoritatively on '{topic_title}'.\n"
+            f"- Coherence Rule: Leverage the surrounding unit topics roadmap above to frame prerequisite principles and ensure technical consistency with the rest of the unit, without repeating entire explanations of sibling topics.\n"
+            f"- Custom Examiner Focus: '{custom_focus or 'Standard university examination standard'}'.\n\n"
+            f"Return JSON adhering strictly to schema:\n"
             f'{{"title": str, "markdown_text": str, "content_json": {{"core_points": [str], "key_terms": [str]}}}}'
         )
         try:
@@ -591,7 +620,7 @@ class GroqProvider(AIProviderInterface):
         except Exception as e:
             logger.warning(f"Groq generate_study_notes error, using academic fallback: {e}")
             return await self.fallback_engine.generate_study_notes(
-                topic_title, unit_context, subject_context, resource_type, custom_focus
+                topic_title, unit_context, subject_context, resource_type, custom_focus, unit_topics, unit_description
             )
 
     async def generate_memorization_items(
