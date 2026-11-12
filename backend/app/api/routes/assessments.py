@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -139,7 +139,7 @@ async def submit_assessment(
     )
 
 
-@router.get("/{id}/assessment/latest", response_model=AssessmentResultOut)
+@router.get("/{id}/assessment/latest", response_model=Optional[AssessmentResultOut])
 def get_latest_assessment(
     id: str,
     current_user: User = Depends(get_current_user),
@@ -152,7 +152,7 @@ def get_latest_assessment(
         .first()
     )
     if not result:
-        raise HTTPException(status_code=404, detail="No assessment found for this topic")
+        return None
 
     return AssessmentResultOut(
         id=result.id,
