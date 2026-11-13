@@ -44,6 +44,9 @@ import {
   X,
   Upload,
   Image as ImageIcon,
+  Hammer,
+  HelpCircle,
+  AlertCircle,
 } from 'lucide-react';
 import {
   fetchFlowDiagrams,
@@ -58,7 +61,7 @@ import { FlowDiagram } from '../../types';
 
 interface CustomNodeData {
   label: string;
-  mode: 'edit' | 'recall';
+  mode: 'edit' | 'recall' | 'build';
   recallValue?: string;
   recallResult?: 'correct' | 'incorrect' | null;
   onLabelChange?: (id: string, label: string) => void;
@@ -244,7 +247,7 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 // ─── Custom Editable & Deletable Edge ──────────────────────────────────────────
 
 interface CustomEdgeData {
-  mode: 'edit' | 'recall';
+  mode: 'edit' | 'recall' | 'build';
   onLabelChange?: (id: string, label: string) => void;
   onDeleteEdge?: (id: string) => void;
 }
@@ -353,7 +356,7 @@ interface CanvasProps {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  mode: 'edit' | 'recall';
+  mode: 'edit' | 'recall' | 'build';
 }
 
 const defaultEdgeOptions = {
@@ -427,7 +430,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     try { return JSON.parse(json) as Edge[]; } catch { return []; }
   };
 
-  const [mode, setMode] = useState<'edit' | 'recall'>('edit');
+  const [mode, setMode] = useState<'edit' | 'recall' | 'build'>('edit');
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [recallInputs, setRecallInputs] = useState<Record<string, string>>({});
@@ -437,6 +440,17 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [diagramName, setDiagramName] = useState(diagram.name);
   const nextId = useRef(1000);
+
+  // ─── Build / Reconstruction from Scratch State ───
+  const [unlockedNodeIds, setUnlockedNodeIds] = useState<Set<string>>(new Set());
+  const [buildInputText, setBuildInputText] = useState('');
+  const [buildFeedbackMsg, setBuildFeedbackMsg] = useState<{ type: 'success' | 'info' | 'error'; text: string } | null>(null);
+  const [buildEvalResult, setBuildEvalResult] = useState<{
+    evaluated: boolean;
+    missingConnections: string[];
+    correctCount: number;
+    totalExpected: number;
+  } | null>(null);
 
   // Reference to original labels for answer checking in Recall Mode
   const originalLabelsRef = useRef<Record<string, string>>({});
@@ -484,7 +498,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
   // Build nodes with callbacks injected into data
   const buildDisplayNodes = useCallback(
-    (baseNodes: Node[], currentMode: 'edit' | 'recall', inputs: Record<string, string>, results: Record<string, 'correct' | 'incorrect' | null>): Node[] => {
+    (baseNodes: Node[], currentMode: 'edit' | 'recall' | 'build', inputs: Record<string, string>, results: Record<string, 'correct' | 'incorrect' | null>): Node[] => {
       return baseNodes.map((n) => ({
         ...n,
         data: {
@@ -506,7 +520,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
   // Build edges with callbacks injected into data
   const buildDisplayEdges = useCallback(
-    (baseEdges: Edge[], currentMode: 'edit' | 'recall'): Edge[] => {
+    (baseEdges: Edge[], currentMode: 'edit' | 'recall' | 'build'): Edge[] => {
       return baseEdges.map((e) => ({
         ...e,
         markerEnd: e.markerEnd || {
@@ -541,8 +555,24 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     setEdges(buildDisplayEdges(baseEdges, mode));
   }, [diagram]);
 
-  // When switching modes, update node and edge data in place
+  // When switching modes or unlocking nodes in Build Mode, update nodes and edges
   useEffect(() => {
+    if (mode === 'build') {
+      const baseNodes = parseNodes(diagram.nodes_json);
+      // Filter only unlocked nodes
+      const visibleNodes = baseNodes.filter((n) => unlockedNodeIds.has(n.id));
+      setNodes(buildDisplayNodes(visibleNodes, 'edit', {}, {}));
+      return;
+    }
+
+    if (mode === 'edit' && nodes.length === 0) {
+      const baseNodes = parseNodes(diagram.nodes_json);
+      const baseEdges = parseEdges(diagram.edges_json);
+      setNodes(buildDisplayNodes(baseNodes, 'edit', {}, {}));
+      setEdges(buildDisplayEdges(baseEdges, 'edit'));
+      return;
+    }
+
     setNodes((prev) =>
       prev.map((n) => ({
         ...n,
@@ -569,13 +599,13 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
         ...e,
         data: {
           ...e.data,
-          mode,
+          mode: mode === 'recall' ? 'recall' : 'edit',
           onLabelChange: handleEdgeLabelChange,
           onDeleteEdge: handleDeleteEdge,
         },
       }))
     );
-  }, [mode, recallResults, handleDeleteNode, handleEdgeLabelChange, handleDeleteEdge, handleRecallInputUpdate]);
+  }, [mode, unlockedNodeIds, recallResults, handleDeleteNode, handleEdgeLabelChange, handleDeleteEdge, handleRecallInputUpdate]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => buildDisplayNodes(applyNodeChanges(changes, nds), mode, recallInputs, recallResults)),
@@ -697,6 +727,100 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     setMode('recall');
   };
 
+  // ─── Build from Scratch Mode Handlers ───
+  const enterBuildMode = () => {
+    setUnlockedNodeIds(new Set());
+    setBuildInputText('');
+    setBuildFeedbackMsg(null);
+    setBuildEvalResult(null);
+    setEdges([]);
+    setMode('build');
+  };
+
+  const handleBuildTypeSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const query = buildInputText.trim().toLowerCase();
+    if (!query) return;
+
+    const baseNodes = parseNodes(diagram.nodes_json);
+    // Find matching unrevealed node
+    const match = baseNodes.find((n) => {
+      const lbl = ((n.data?.label as string) || '').trim().toLowerCase();
+      // Match exact label or partial without punctuation
+      const cleanLbl = lbl.replace(/[^a-z0-9]/g, '');
+      const cleanQuery = query.replace(/[^a-z0-9]/g, '');
+      return (lbl === query || cleanLbl === cleanQuery) && !unlockedNodeIds.has(n.id);
+    });
+
+    if (match) {
+      const updated = new Set(unlockedNodeIds);
+      // If child node inside container, unlock container as well so it renders properly
+      if (match.parentId && !updated.has(match.parentId)) {
+        updated.add(match.parentId);
+      }
+      updated.add(match.id);
+      setUnlockedNodeIds(updated);
+      setBuildInputText('');
+      setBuildFeedbackMsg({
+        type: 'success',
+        text: `Unlocked: "${match.data?.label || match.id}"!`,
+      });
+      setTimeout(() => setBuildFeedbackMsg(null), 3000);
+    } else {
+      // Check if already unlocked
+      const already = baseNodes.find((n) => {
+        const lbl = ((n.data?.label as string) || '').trim().toLowerCase();
+        return lbl === query && unlockedNodeIds.has(n.id);
+      });
+      if (already) {
+        setBuildFeedbackMsg({
+          type: 'info',
+          text: `"${already.data?.label}" is already on canvas.`,
+        });
+      } else {
+        setBuildFeedbackMsg({
+          type: 'error',
+          text: `"${buildInputText}" does not match any missing box. Check spelling.`,
+        });
+      }
+      setTimeout(() => setBuildFeedbackMsg(null), 3000);
+    }
+  };
+
+  const handleEvaluateBuild = () => {
+    const expectedEdges = parseEdges(diagram.edges_json);
+    const expectedNodes = parseNodes(diagram.nodes_json);
+
+    // Check which expected relationships exist in user's drawn edges
+    const missing: string[] = [];
+    let correctCount = 0;
+
+    expectedEdges.forEach((exp) => {
+      const sourceNode = expectedNodes.find((n) => n.id === exp.source);
+      const targetNode = expectedNodes.find((n) => n.id === exp.target);
+      const sourceName = sourceNode?.data?.label || exp.source;
+      const targetName = targetNode?.data?.label || exp.target;
+
+      // Check if user drew this connection
+      const userHasEdge = edges.some(
+        (ue) => ue.source === exp.source && ue.target === exp.target
+      );
+
+      if (userHasEdge) {
+        correctCount++;
+      } else {
+        missing.push(`${sourceName} → ${targetName}`);
+      }
+    });
+
+    setBuildEvalResult({
+      evaluated: true,
+      correctCount,
+      totalExpected: expectedEdges.length,
+      missingConnections: missing,
+    });
+  };
+
   const checkRecall = () => {
     const results: Record<string, 'correct' | 'incorrect'> = {};
     nodes.forEach((n) => {
@@ -765,8 +889,16 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
               <button
                 onClick={enterRecall}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/60 border border-violet-200 dark:border-violet-700 transition-colors"
+                title="Quiz yourself by typing the labels into blanked boxes"
               >
-                <Eye className="w-3.5 h-3.5" /> Recall Mode
+                <Eye className="w-3.5 h-3.5" /> Fill Labels
+              </button>
+              <button
+                onClick={enterBuildMode}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700 transition-colors"
+                title="Start with a blank canvas: type box names to reveal them, then connect arrows"
+              >
+                <Hammer className="w-3.5 h-3.5" /> Build from Scratch
               </button>
               <button
                 onClick={handleSave}
@@ -777,7 +909,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
                 {saveMsg ?? (isSaving ? 'Saving…' : 'Save')}
               </button>
             </>
-          ) : (
+          ) : mode === 'recall' ? (
             <>
               {recallChecked && (
                 <span className="text-xs font-mono font-semibold text-stone-600 dark:text-stone-300 px-2">
@@ -810,15 +942,128 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
                 <Edit3 className="w-3.5 h-3.5" /> Edit Mode
               </button>
             </>
+          ) : (
+            // Build Mode toolbar
+            <>
+              <button
+                onClick={handleEvaluateBuild}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Check Connections
+              </button>
+              <button
+                onClick={enterBuildMode}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Restart
+              </button>
+              <button
+                onClick={() => {
+                  const baseNodes = parseNodes(diagram.nodes_json);
+                  const baseEdges = parseEdges(diagram.edges_json);
+                  setNodes(buildDisplayNodes(baseNodes, 'edit', {}, {}));
+                  setEdges(buildDisplayEdges(baseEdges, 'edit'));
+                  setMode('edit');
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Exit to Edit
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {/* Mode indicator */}
+      {/* Mode banners */}
       {mode === 'recall' && (
         <div className="px-4 py-2 bg-violet-50 dark:bg-violet-950/40 border-b border-violet-100 dark:border-violet-800 text-xs text-violet-700 dark:text-violet-300 flex items-center gap-2 shrink-0">
           <Eye className="w-3.5 h-3.5" />
-          <strong>Recall Mode:</strong> Type the name of each block from memory, then click "Check Answers".
+          <strong>Fill Labels Mode:</strong> Type the name of each block from memory, then click "Check Answers".
+        </div>
+      )}
+
+      {mode === 'build' && (
+        <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-xs shrink-0 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Hammer className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <strong className="text-amber-900 dark:text-amber-200">Build from Scratch Mode:</strong>{' '}
+                <span className="text-stone-600 dark:text-stone-400">
+                  Type each container or box name to reveal it onto the canvas. Once all boxes are revealed, draw arrows connecting them!
+                </span>
+              </div>
+            </div>
+            <div className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0">
+              {unlockedNodeIds.size} / {parseNodes(diagram.nodes_json).length} boxes revealed
+            </div>
+          </div>
+
+          {/* Text Input to spawn boxes */}
+          <form onSubmit={handleBuildTypeSubmit} className="flex items-center gap-2 max-w-xl">
+            <input
+              type="text"
+              value={buildInputText}
+              onChange={(e) => setBuildInputText(e.target.value)}
+              placeholder="Type box name (e.g. HDFS, Parser, Apache Pig, Hadoop)..."
+              className="flex-1 px-3 py-1.5 text-xs rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+            />
+            <button
+              type="submit"
+              disabled={!buildInputText.trim()}
+              className="px-3 py-1.5 text-xs font-semibold rounded bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 transition-colors shrink-0"
+            >
+              Reveal Box
+            </button>
+          </form>
+
+          {/* Feedback messages */}
+          {buildFeedbackMsg && (
+            <div
+              className={`text-xs font-medium flex items-center gap-1.5 ${
+                buildFeedbackMsg.type === 'success'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : buildFeedbackMsg.type === 'info'
+                  ? 'text-blue-700 dark:text-blue-300'
+                  : 'text-rose-700 dark:text-rose-300'
+              }`}
+            >
+              {buildFeedbackMsg.type === 'success' ? (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5" />
+              )}
+              {buildFeedbackMsg.text}
+            </div>
+          )}
+
+          {/* Evaluation Results Banner */}
+          {buildEvalResult?.evaluated && (
+            <div className="p-2.5 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-stone-900 dark:text-stone-100">
+                {buildEvalResult.correctCount === buildEvalResult.totalExpected ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4" /> Perfect! All {buildEvalResult.totalExpected} relationships are correctly connected!
+                  </span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {buildEvalResult.correctCount} of {buildEvalResult.totalExpected} connections correct.
+                  </span>
+                )}
+              </div>
+              {buildEvalResult.missingConnections.length > 0 && (
+                <div className="text-rose-600 dark:text-rose-400 text-[11px] pt-1">
+                  <strong>Missing or incomplete connections:</strong>
+                  <ul className="list-disc list-inside mt-0.5 space-y-0.5">
+                    {buildEvalResult.missingConnections.map((m, idx) => (
+                      <li key={idx}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
