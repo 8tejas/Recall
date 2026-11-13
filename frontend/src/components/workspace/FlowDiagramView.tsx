@@ -93,13 +93,19 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
       <Handle type="source" position={Position.Right} id="right-source" className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
 
       {d.mode === 'recall' ? (
-        <div className="w-full flex flex-col items-center gap-1">
+        <div className="w-full flex flex-col items-center gap-1 nodrag nopan">
           <input
             type="text"
             value={d.recallValue ?? ''}
-            onChange={(e) => d.onRecallInput?.(id, e.target.value)}
+            onChange={(e) => {
+              e.stopPropagation();
+              d.onRecallInput?.(id, e.target.value);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             placeholder="Name this block..."
-            className="w-full text-center bg-transparent border-b border-current/40 outline-none placeholder-stone-400/70 text-xs py-0.5"
+            className="w-full text-center bg-white/80 dark:bg-stone-900/80 rounded px-1.5 py-1 border border-violet-300 dark:border-violet-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 text-xs font-semibold focus:ring-1 focus:ring-violet-500"
           />
           {d.recallResult === 'correct' && (
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
@@ -117,7 +123,9 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
           type="text"
           value={d.label}
           onChange={(e) => d.onLabelChange?.(id, e.target.value)}
-          className="w-full text-center bg-transparent outline-none font-medium text-xs break-words"
+          onKeyDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="w-full text-center bg-transparent outline-none font-medium text-xs break-words nodrag"
         />
       )}
     </div>
@@ -147,7 +155,7 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400" />
 
       {/* Group header title */}
-      <div className="flex items-center gap-1.5 pb-2 border-b border-stone-200/60 dark:border-stone-800">
+      <div className="flex items-center gap-1.5 pb-2 border-b border-stone-200/60 dark:border-stone-800 nodrag nopan">
         <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-stone-500 font-mono">
           GROUP
         </span>
@@ -156,9 +164,32 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             type="text"
             value={d.label}
             onChange={(e) => d.onLabelChange?.(id, e.target.value)}
-            className="text-xs font-semibold bg-transparent outline-none text-stone-700 dark:text-stone-300 w-full"
+            onKeyDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="text-xs font-semibold bg-transparent outline-none text-stone-700 dark:text-stone-300 w-full nodrag"
             placeholder="Group Title (e.g. Backend Cluster)"
           />
+        ) : d.mode === 'recall' ? (
+          <div className="flex items-center gap-1 flex-1">
+            <input
+              type="text"
+              value={d.recallValue ?? ''}
+              onChange={(e) => {
+                e.stopPropagation();
+                d.onRecallInput?.(id, e.target.value);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="text-xs font-semibold bg-white/80 dark:bg-stone-900/80 rounded px-1 py-0.5 border border-purple-300 dark:border-purple-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 w-full"
+              placeholder="Name group..."
+            />
+            {d.recallResult === 'correct' && (
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">✓</span>
+            )}
+            {d.recallResult === 'incorrect' && (
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold whitespace-nowrap">✗ {d.label}</span>
+            )}
+          </div>
         ) : (
           <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{d.label}</span>
         )}
@@ -306,8 +337,28 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
   // Keep callbacks fresh when inputs/results change
   useEffect(() => {
-    setNodes((prev) => buildDisplayNodes(prev, mode, recallInputs, recallResults));
-  }, [mode, recallInputs, recallResults, buildDisplayNodes]);
+    setNodes((prev) =>
+      prev.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          mode,
+          recallValue: recallInputs[n.id] ?? '',
+          recallResult: recallResults[n.id] ?? null,
+          onLabelChange: (id: string, label: string) => {
+            setNodes((current) =>
+              current.map((node) =>
+                node.id === id ? { ...node, data: { ...node.data, label } } : node
+              )
+            );
+          },
+          onRecallInput: (id: string, value: string) => {
+            setRecallInputs((curr) => ({ ...curr, [id]: value }));
+          },
+        },
+      }))
+    );
+  }, [mode, recallInputs, recallResults]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => buildDisplayNodes(applyNodeChanges(changes, nds), mode, recallInputs, recallResults)),
