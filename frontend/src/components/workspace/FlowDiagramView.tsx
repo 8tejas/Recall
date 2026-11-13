@@ -14,12 +14,16 @@ import {
   Position,
   NodeResizer,
   MarkerType,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getBezierPath,
   type Node,
   type Edge,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
   type NodeProps,
+  type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -37,6 +41,7 @@ import {
   Share2,
   BoxSelect,
   ArrowRight,
+  X,
 } from 'lucide-react';
 import { fetchFlowDiagrams, generateFlowDiagram, saveFlowDiagram, deleteFlowDiagram } from '../../api/client';
 import { FlowDiagram } from '../../types';
@@ -50,6 +55,7 @@ interface CustomNodeData {
   recallResult?: 'correct' | 'incorrect' | null;
   onLabelChange?: (id: string, label: string) => void;
   onRecallInput?: (id: string, value: string) => void;
+  onDeleteNode?: (id: string) => void;
 }
 
 const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
@@ -85,6 +91,20 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
         lineClassName="!border-blue-400"
         handleClassName="!w-2.5 !h-2.5 !bg-blue-500 !border-white"
       />
+
+      {/* Delete button when selected in edit mode */}
+      {isEdit && selected && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            d.onDeleteNode?.(id);
+          }}
+          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
+          title="Delete block"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
 
       {/* Target & Source handles on all 4 sides for easy arrow connections */}
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
@@ -151,6 +171,21 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         lineClassName="!border-purple-400"
         handleClassName="!w-2.5 !h-2.5 !bg-purple-500 !border-white"
       />
+
+      {/* Delete button when container is selected in edit mode */}
+      {isEdit && selected && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            d.onDeleteNode?.(id);
+          }}
+          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
+          title="Delete container"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400" />
       <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400" />
 
@@ -198,11 +233,108 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   );
 };
 
+// ─── Custom Editable & Deletable Edge ──────────────────────────────────────────
+
+interface CustomEdgeData {
+  mode: 'edit' | 'recall';
+  onLabelChange?: (id: string, label: string) => void;
+  onDeleteEdge?: (id: string) => void;
+}
+
+const CustomEdge: React.FC<EdgeProps> = ({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style = {},
+  markerEnd,
+  label,
+  selected,
+  data,
+}) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const d = data as unknown as CustomEdgeData | undefined;
+  const isEdit = d?.mode !== 'recall';
+  const currentLabel = (label as string) ?? '';
+
+  return (
+    <>
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{
+          ...style,
+          strokeWidth: selected ? 3 : 2,
+          stroke: selected ? '#3b82f6' : (style.stroke ?? '#78716c'),
+        }}
+      />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+          className="nodrag nopan flex items-center gap-1 bg-white/95 dark:bg-stone-800/95 border border-stone-200 dark:border-stone-700 shadow-sm rounded px-1.5 py-0.5 z-10 transition-transform hover:scale-105"
+        >
+          {isEdit ? (
+            <>
+              <input
+                type="text"
+                value={currentLabel}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  d?.onLabelChange?.(id, e.target.value);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                placeholder="label..."
+                className="text-[10px] font-mono bg-transparent outline-none text-stone-700 dark:text-stone-300 w-16 text-center focus:w-24 transition-all"
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  d?.onDeleteEdge?.(id);
+                }}
+                className="w-3.5 h-3.5 rounded-full bg-stone-200 hover:bg-rose-500 hover:text-white dark:bg-stone-700 text-stone-500 flex items-center justify-center transition-colors"
+                title="Delete arrow"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </>
+          ) : (
+            currentLabel && (
+              <span className="text-[10px] font-mono text-stone-600 dark:text-stone-300 px-1">
+                {currentLabel}
+              </span>
+            )
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
+
 const nodeTypes = {
   input: CustomNode,
   output: CustomNode,
   default: CustomNode,
   group: GroupNode,
+};
+
+const edgeTypes = {
+  default: CustomEdge,
 };
 
 // ─── Inner canvas (needs ReactFlowProvider context) ─────────────────────────
@@ -241,6 +373,7 @@ const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesCha
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       fitView
       fitViewOptions={{ padding: 0.15 }}
@@ -297,6 +430,29 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const [diagramName, setDiagramName] = useState(diagram.name);
   const nextId = useRef(1000);
 
+  const handleDeleteNode = useCallback((id: string) => {
+    setNodes((prev) => prev.filter((n) => n.id !== id && n.parentId !== id));
+    setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
+    setRecallInputs((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+    setRecallResults((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  }, []);
+
+  const handleDeleteEdge = useCallback((id: string) => {
+    setEdges((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const handleEdgeLabelChange = useCallback((id: string, label: string) => {
+    setEdges((prev) => prev.map((e) => (e.id === id ? { ...e, label } : e)));
+  }, []);
+
   // Build nodes with callbacks injected into data
   const buildDisplayNodes = useCallback(
     (baseNodes: Node[], currentMode: 'edit' | 'recall', inputs: Record<string, string>, results: Record<string, 'correct' | 'incorrect' | null>): Node[] => {
@@ -313,26 +469,41 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
           onRecallInput: (id: string, value: string) => {
             setRecallInputs((prev) => ({ ...prev, [id]: value }));
           },
+          onDeleteNode: handleDeleteNode,
         },
       }));
     },
-    []
+    [handleDeleteNode]
+  );
+
+  // Build edges with callbacks injected into data
+  const buildDisplayEdges = useCallback(
+    (baseEdges: Edge[], currentMode: 'edit' | 'recall'): Edge[] => {
+      return baseEdges.map((e) => ({
+        ...e,
+        markerEnd: e.markerEnd || {
+          type: MarkerType.ArrowClosed,
+          width: 16,
+          height: 16,
+          color: '#78716c',
+        },
+        style: e.style || { strokeWidth: 2, stroke: '#78716c' },
+        data: {
+          ...e.data,
+          mode: currentMode,
+          onLabelChange: handleEdgeLabelChange,
+          onDeleteEdge: handleDeleteEdge,
+        },
+      }));
+    },
+    [handleEdgeLabelChange, handleDeleteEdge]
   );
 
   useEffect(() => {
-    const base = parseNodes(diagram.nodes_json);
-    const parsedEdges = parseEdges(diagram.edges_json).map((e) => ({
-      ...e,
-      markerEnd: e.markerEnd || {
-        type: MarkerType.ArrowClosed,
-        width: 16,
-        height: 16,
-        color: '#78716c',
-      },
-      style: e.style || { strokeWidth: 2, stroke: '#78716c' },
-    }));
-    setNodes(buildDisplayNodes(base, mode, {}, {}));
-    setEdges(parsedEdges);
+    const baseNodes = parseNodes(diagram.nodes_json);
+    const baseEdges = parseEdges(diagram.edges_json);
+    setNodes(buildDisplayNodes(baseNodes, mode, {}, {}));
+    setEdges(buildDisplayEdges(baseEdges, mode));
   }, [diagram]);
 
   // Keep callbacks fresh when inputs/results change
@@ -355,10 +526,22 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
           onRecallInput: (id: string, value: string) => {
             setRecallInputs((curr) => ({ ...curr, [id]: value }));
           },
+          onDeleteNode: handleDeleteNode,
         },
       }))
     );
-  }, [mode, recallInputs, recallResults]);
+    setEdges((prev) =>
+      prev.map((e) => ({
+        ...e,
+        data: {
+          ...e.data,
+          mode,
+          onLabelChange: handleEdgeLabelChange,
+          onDeleteEdge: handleDeleteEdge,
+        },
+      }))
+    );
+  }, [mode, recallInputs, recallResults, handleDeleteNode, handleEdgeLabelChange, handleDeleteEdge]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => buildDisplayNodes(applyNodeChanges(changes, nds), mode, recallInputs, recallResults)),
@@ -388,12 +571,17 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
               strokeWidth: 2,
               stroke: '#78716c',
             },
+            data: {
+              mode,
+              onLabelChange: handleEdgeLabelChange,
+              onDeleteEdge: handleDeleteEdge,
+            },
           },
           eds
         )
       );
     },
-    []
+    [mode, handleEdgeLabelChange, handleDeleteEdge]
   );
 
   const addNode = (type: 'default' | 'group' = 'default') => {
@@ -615,10 +803,11 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
       {/* Edit mode hint */}
       {mode === 'edit' && (
         <div className="px-4 py-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-400 dark:text-stone-500 shrink-0 flex items-center gap-3 flex-wrap">
-          <span>• <strong>Add arrow:</strong> Click & drag from any dot (top/bottom/left/right) to another block</span>
-          <span>• <strong>Reshape / resize:</strong> Click a block to reveal blue/purple corner handles and drag</span>
+          <span>• <strong>Add arrow:</strong> Drag from any block dot to another</span>
+          <span>• <strong>Arrow label / delete:</strong> Type in the arrow box or click ✕ on it</span>
+          <span>• <strong>Delete block:</strong> Select any box and click the red ✕</span>
+          <span>• <strong>Reshape / resize:</strong> Select any box and drag corner handles</span>
           <span>• <strong>Boxes in boxes:</strong> Click <em>Add Outer Container</em>, then <em>Nest Inside Box</em></span>
-          <span>• <strong>Rename:</strong> Click text to edit</span>
         </div>
       )}
     </div>
