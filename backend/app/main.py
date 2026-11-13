@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.core.config import settings
 from backend.app.core.database import Base, engine
 import backend.app.models  # Ensure all SQLAlchemy models are registered
-from backend.app.api.routes import auth, subjects, topics, exercises, revision, assessments, mcq, topic_qa
+from backend.app.api.routes import auth, subjects, topics, exercises, revision, assessments, mcq, topic_qa, flow_diagram
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("recall")
@@ -58,6 +58,7 @@ app.include_router(revision.router)
 app.include_router(assessments.router, prefix="/api")
 app.include_router(mcq.router, prefix="/api")
 app.include_router(topic_qa.router, prefix="/api")
+app.include_router(flow_diagram.router, prefix="/api")
 
 @app.get("/api/health")
 def health_check():

@@ -237,3 +237,34 @@ export interface TopicQA {
   answer: string;
   created_at: string;
 }
+
+export interface FlowDiagramNodeData {
+  label: string;
+}
+
+export interface FlowDiagramNode {
+  id: string;
+  type?: string;
+  position: { x: number; y: number };
+  data: FlowDiagramNodeData;
+}
+
+export interface FlowDiagramEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  animated?: boolean;
+}
+
+export interface FlowDiagram {
+  id: string;
+  topic_id: string;
+  user_id: string;
+  name: string;
+  prompt?: string;
+  nodes_json: string;
+  edges_json: string;
+  created_at: string;
+  updated_at: string;
+}

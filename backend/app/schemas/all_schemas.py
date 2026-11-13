@@ -420,3 +420,52 @@ class TopicQAOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+# ----------------- Flow Diagram Schemas -----------------
+
+class FlowDiagramNodeData(BaseModel):
+    label: str
+    node_type: Optional[str] = "default"  # input, output, default, decision
+
+
+class FlowDiagramNode(BaseModel):
+    id: str
+    type: Optional[str] = "default"
+    position: Dict[str, float]  # {"x": float, "y": float}
+    data: FlowDiagramNodeData
+
+
+class FlowDiagramEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    label: Optional[str] = None
+    animated: Optional[bool] = False
+
+
+class FlowDiagramGenerateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    prompt: str = Field(..., min_length=5, max_length=2000,
+                        description="Describe the architecture or flow to generate (e.g. 'TCP 3-way handshake')")
+
+
+class FlowDiagramSaveRequest(BaseModel):
+    name: Optional[str] = None
+    nodes_json: str  # JSON-encoded list of node dicts
+    edges_json: str  # JSON-encoded list of edge dicts
+
+
+class FlowDiagramOut(BaseModel):
+    id: str
+    topic_id: str
+    user_id: str
+    name: str
+    prompt: Optional[str] = None
+    nodes_json: str
+    edges_json: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+

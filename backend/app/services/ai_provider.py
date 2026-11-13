@@ -21,6 +21,7 @@ from backend.app.prompts.academic_prompts import (
     ANSWER_EVALUATION_SYSTEM_PROMPT,
     MCQ_ASSESSMENT_SYSTEM_PROMPT,
     TOPIC_QA_SYSTEM_PROMPT,
+    FLOW_DIAGRAM_SYSTEM_PROMPT,
 )
 from backend.app.services.memorization_engine import MemorizationEngine
 
@@ -98,6 +99,16 @@ class AIProviderInterface(ABC):
         conversation_history: Optional[List[Dict[str, str]]] = None,
     ) -> str:
         """Answer a student question regarding a syllabus topic with academic rigor."""
+        pass
+
+    @abstractmethod
+    async def generate_flow_diagram(
+        self,
+        prompt: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        """Generate a node-edge flow diagram JSON for architecture/flow memorization."""
         pass
 
 
@@ -859,6 +870,37 @@ class AcademicFallbackProvider(AIProviderInterface):
             f"cite the governing invariant, and illustrate with a clean block architecture diagram."
         )
 
+    async def generate_flow_diagram(
+        self,
+        prompt: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        """Fallback: generate a simple linear flow diagram without AI."""
+        steps = [s.strip() for s in prompt.split("->") if s.strip()]
+        if len(steps) < 2:
+            # Generic 4-step fallback
+            steps = [f"Step {i+1}: {topic_title} Component {i+1}" for i in range(4)]
+        nodes = []
+        edges = []
+        for i, step in enumerate(steps[:12]):
+            ntype = "input" if i == 0 else ("output" if i == len(steps) - 1 else "default")
+            nodes.append({
+                "id": str(i + 1),
+                "type": ntype,
+                "position": {"x": 250, "y": i * 130},
+                "data": {"label": step[:60]},
+            })
+            if i > 0:
+                edges.append({
+                    "id": f"e{i}-{i+1}",
+                    "source": str(i),
+                    "target": str(i + 1),
+                    "label": "",
+                    "animated": False,
+                })
+        return {"nodes": nodes, "edges": edges}
+
 
 class GroqProvider(AIProviderInterface):
     """
@@ -1184,6 +1226,33 @@ class GroqProvider(AIProviderInterface):
             return await self.fallback_engine.answer_topic_question(
                 topic_title, unit_context, subject_context, question, source_text, conversation_history
             )
+
+    async def generate_flow_diagram(
+        self,
+        prompt: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        user_msg = (
+            f"Subject / Course: {subject_context or 'Academic Course'}\n"
+            f"Topic: {topic_title}\n\n"
+            f"Generate a flow diagram for: {prompt}\n\n"
+            "Return ONLY valid JSON (no markdown fences) matching the required schema."
+        )
+        messages = [
+            {"role": "system", "content": FLOW_DIAGRAM_SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ]
+        try:
+            result = await self._call_groq_json(messages)
+            # Validate basic structure
+            if "nodes" in result and "edges" in result and len(result["nodes"]) >= 2:
+                return result
+            logger.warning("Groq flow diagram result missing nodes/edges, falling back")
+            return await self.fallback_engine.generate_flow_diagram(prompt, topic_title, subject_context)
+        except Exception as e:
+            logger.warning(f"Groq generate_flow_diagram error, falling back: {e}")
+            return await self.fallback_engine.generate_flow_diagram(prompt, topic_title, subject_context)
 
 
 

@@ -13,6 +13,7 @@ import {
   MCQQuestion,
   MCQAssessmentResult,
   TopicQA,
+  FlowDiagram,
 } from '../types';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL
@@ -226,5 +227,39 @@ export const askTopicQuestion = async (topicId: string, question: string): Promi
 
 export const deleteTopicQA = async (topicId: string, qaId: string): Promise<void> => {
   await api.delete(`/topics/${topicId}/qa/${qaId}`);
+};
+
+// ----------------- Flow Diagrams -----------------
+export const fetchFlowDiagrams = async (topicId: string): Promise<FlowDiagram[]> => {
+  const res = await api.get(`/topics/${topicId}/flow-diagrams`);
+  return res.data;
+};
+
+export const generateFlowDiagram = async (
+  topicId: string,
+  name: string,
+  prompt: string,
+): Promise<FlowDiagram> => {
+  const res = await api.post(`/topics/${topicId}/flow-diagrams/generate`, { name, prompt });
+  return res.data;
+};
+
+export const saveFlowDiagram = async (
+  topicId: string,
+  diagramId: string,
+  nodes_json: string,
+  edges_json: string,
+  name?: string,
+): Promise<FlowDiagram> => {
+  const res = await api.put(`/topics/${topicId}/flow-diagrams/${diagramId}`, {
+    nodes_json,
+    edges_json,
+    name,
+  });
+  return res.data;
+};
+
+export const deleteFlowDiagram = async (topicId: string, diagramId: string): Promise<void> => {
+  await api.delete(`/topics/${topicId}/flow-diagrams/${diagramId}`);
 };
 

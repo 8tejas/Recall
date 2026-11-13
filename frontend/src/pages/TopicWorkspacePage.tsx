@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Clock,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Share2,
 } from 'lucide-react';
 import {
   fetchTopicDetail,
@@ -32,9 +33,10 @@ import { WrittenPracticeView } from '../components/practice/WrittenPracticeView'
 import { TopicAssessmentView } from '../components/workspace/TopicAssessmentView';
 import { MCQAssessmentView } from '../components/workspace/MCQAssessmentView';
 import { TopicQAView } from '../components/workspace/TopicQAView';
+import { FlowDiagramView } from '../components/workspace/FlowDiagramView';
 import { SelectiveGeneratorModal } from '../components/workspace/SelectiveGeneratorModal';
 
-type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment' | 'mcq' | 'qa';
+type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment' | 'mcq' | 'qa' | 'flow';
 
 export const TopicWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +51,7 @@ export const TopicWorkspacePage: React.FC = () => {
     if (location.pathname.endsWith('/assessment')) return 'assessment';
     if (location.pathname.endsWith('/mcq')) return 'mcq';
     if (location.pathname.endsWith('/qa')) return 'qa';
+    if (location.pathname.endsWith('/flow')) return 'flow';
     return 'notes';
   };
 
@@ -97,6 +100,7 @@ export const TopicWorkspacePage: React.FC = () => {
     else if (tab === 'assessment') navigate(`/topics/${id}/assessment`);
     else if (tab === 'mcq') navigate(`/topics/${id}/mcq`);
     else if (tab === 'qa') navigate(`/topics/${id}/qa`);
+    else if (tab === 'flow') navigate(`/topics/${id}/flow`);
     else navigate(`/topics/${id}`);
   };
 
@@ -287,10 +291,22 @@ export const TopicWorkspacePage: React.FC = () => {
           <MessageSquareQuote className="w-3.5 h-3.5" />
           <span>G. Academic Q&A</span>
         </button>
+
+        <button
+          onClick={() => handleTabChange('flow')}
+          className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
+            activeTab === 'flow'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          <span>H. Flow Diagrams</span>
+        </button>
       </div>
 
       {/* Main Tab Viewport */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8">
+      <div className={`flex-1 min-h-0 ${activeTab === 'flow' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-4 sm:p-8'}`}>
         {/* Tab A: Study Material */}
         {activeTab === 'notes' && (
           <StudyNotesView
@@ -446,6 +462,16 @@ export const TopicWorkspacePage: React.FC = () => {
             topicId={topicDetail.id}
             topicTitle={topicDetail.title}
           />
+        )}
+
+        {/* Tab H: Flow Diagrams */}
+        {activeTab === 'flow' && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <FlowDiagramView
+              topicId={topicDetail.id}
+              topicTitle={topicDetail.title}
+            />
+          </div>
         )}
       </div>
 

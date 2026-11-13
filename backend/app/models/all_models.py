@@ -28,6 +28,7 @@ class User(Base):
     assessment_results = relationship("AssessmentResult", back_populates="user", cascade="all, delete-orphan")
     mcq_assessments = relationship("MCQAssessmentResult", back_populates="user", cascade="all, delete-orphan")
     topic_qas = relationship("TopicQA", back_populates="user", cascade="all, delete-orphan")
+    flow_diagrams = relationship("FlowDiagram", back_populates="user", cascade="all, delete-orphan")
 
 
 class Subject(Base):
@@ -80,6 +81,7 @@ class Topic(Base):
     mcq_questions = relationship("MCQQuestion", back_populates="topic", cascade="all, delete-orphan")
     mcq_assessments = relationship("MCQAssessmentResult", back_populates="topic", cascade="all, delete-orphan")
     qas = relationship("TopicQA", back_populates="topic", cascade="all, delete-orphan", order_by="TopicQA.created_at.asc()")
+    flow_diagrams = relationship("FlowDiagram", back_populates="topic", cascade="all, delete-orphan", order_by="FlowDiagram.created_at.asc()")
 
 
 class LearningMaterial(Base):
@@ -251,4 +253,21 @@ class TopicQA(Base):
 
     topic = relationship("Topic", back_populates="qas")
     user = relationship("User", back_populates="topic_qas")
+
+
+class FlowDiagram(Base):
+    __tablename__ = "flow_diagrams"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    topic_id = Column(String(36), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    prompt = Column(Text, nullable=True)  # The architecture prompt used to generate it
+    nodes_json = Column(Text, nullable=False, default="[]")  # JSON array of node objects
+    edges_json = Column(Text, nullable=False, default="[]")  # JSON array of edge objects
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    topic = relationship("Topic", back_populates="flow_diagrams")
+    user = relationship("User", back_populates="flow_diagrams")
 
