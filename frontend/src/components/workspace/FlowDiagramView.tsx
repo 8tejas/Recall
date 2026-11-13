@@ -430,6 +430,9 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const [diagramName, setDiagramName] = useState(diagram.name);
   const nextId = useRef(1000);
 
+  // Reference to original labels for answer checking in Recall Mode
+  const originalLabelsRef = useRef<Record<string, string>>({});
+
   const handleDeleteNode = useCallback((id: string) => {
     setNodes((prev) => prev.filter((n) => n.id !== id && n.parentId !== id));
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
@@ -453,6 +456,24 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     setEdges((prev) => prev.map((e) => (e.id === id ? { ...e, label } : e)));
   }, []);
 
+  // Keep recall inputs responsive without resetting nodes
+  const handleRecallInputUpdate = useCallback((id: string, value: string) => {
+    setRecallInputs((prev) => ({ ...prev, [id]: value }));
+    setNodes((prev) =>
+      prev.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                recallValue: value,
+              },
+            }
+          : node
+      )
+    );
+  }, []);
+
   // Build nodes with callbacks injected into data
   const buildDisplayNodes = useCallback(
     (baseNodes: Node[], currentMode: 'edit' | 'recall', inputs: Record<string, string>, results: Record<string, 'correct' | 'incorrect' | null>): Node[] => {
@@ -464,16 +485,15 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
           recallValue: inputs[n.id] ?? '',
           recallResult: results[n.id] ?? null,
           onLabelChange: (id: string, label: string) => {
+            originalLabelsRef.current[id] = label;
             setNodes((prev) => prev.map((node) => node.id === id ? { ...node, data: { ...node.data, label } } : node));
           },
-          onRecallInput: (id: string, value: string) => {
-            setRecallInputs((prev) => ({ ...prev, [id]: value }));
-          },
+          onRecallInput: handleRecallInputUpdate,
           onDeleteNode: handleDeleteNode,
         },
       }));
     },
-    [handleDeleteNode]
+    [handleDeleteNode, handleRecallInputUpdate]
   );
 
   // Build edges with callbacks injected into data
@@ -502,11 +522,18 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   useEffect(() => {
     const baseNodes = parseNodes(diagram.nodes_json);
     const baseEdges = parseEdges(diagram.edges_json);
-    setNodes(buildDisplayNodes(baseNodes, mode, {}, {}));
+    // Cache original labels
+    const labelMap: Record<string, string> = {};
+    baseNodes.forEach((n) => {
+      labelMap[n.id] = (n.data?.label as string) || '';
+    });
+    originalLabelsRef.current = labelMap;
+
+    setNodes(buildDisplayNodes(baseNodes, mode, recallInputs, recallResults));
     setEdges(buildDisplayEdges(baseEdges, mode));
   }, [diagram]);
 
-  // Keep callbacks fresh when inputs/results change
+  // When switching modes, update node and edge data in place
   useEffect(() => {
     setNodes((prev) =>
       prev.map((n) => ({
@@ -517,15 +544,14 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
           recallValue: recallInputs[n.id] ?? '',
           recallResult: recallResults[n.id] ?? null,
           onLabelChange: (id: string, label: string) => {
+            originalLabelsRef.current[id] = label;
             setNodes((current) =>
               current.map((node) =>
                 node.id === id ? { ...node, data: { ...node.data, label } } : node
               )
             );
           },
-          onRecallInput: (id: string, value: string) => {
-            setRecallInputs((curr) => ({ ...curr, [id]: value }));
-          },
+          onRecallInput: handleRecallInputUpdate,
           onDeleteNode: handleDeleteNode,
         },
       }))
@@ -541,7 +567,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
         },
       }))
     );
-  }, [mode, recallInputs, recallResults, handleDeleteNode, handleEdgeLabelChange, handleDeleteEdge]);
+  }, [mode, recallResults, handleDeleteNode, handleEdgeLabelChange, handleDeleteEdge, handleRecallInputUpdate]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => buildDisplayNodes(applyNodeChanges(changes, nds), mode, recallInputs, recallResults)),
@@ -666,9 +692,11 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const checkRecall = () => {
     const results: Record<string, 'correct' | 'incorrect'> = {};
     nodes.forEach((n) => {
-      const correctLabel = ((n.data as any).label as string).trim().toLowerCase();
+      const correctLabel = (originalLabelsRef.current[n.id] || (n.data as any).label || '')
+        .trim()
+        .toLowerCase();
       const userInput = (recallInputs[n.id] ?? '').trim().toLowerCase();
-      results[n.id] = userInput === correctLabel ? 'correct' : 'incorrect';
+      results[n.id] = userInput.length > 0 && userInput === correctLabel ? 'correct' : 'incorrect';
     });
     setRecallResults(results);
     setRecallChecked(true);
