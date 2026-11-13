@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
-from backend.app.core.security import get_current_user
+from backend.app.api.deps import get_current_user
 from backend.app.models.all_models import FlowDiagram, Topic, LearningMaterial, User
 from backend.app.schemas.all_schemas import (
     FlowDiagramGenerateRequest,
