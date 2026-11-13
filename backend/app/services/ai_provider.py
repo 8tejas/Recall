@@ -1301,52 +1301,71 @@ class GroqProvider(AIProviderInterface):
         topic_title: str,
         subject_context: str,
     ) -> Dict[str, Any]:
-        """Analyze an uploaded diagram image with vision model and recreate its node-edge graph."""
-        # Ensure proper data URL format
+        """
+        Analyze an uploaded diagram image using a robust 2-step pipeline:
+        1. Fast Vision perception (Qwen 3.8 27B Vision with low token budget) to extract
+           all boxes, labels, container groups, and arrow flows.
+        2. High-capacity structural assembly (GPT-OSS-120B) to format clean React Flow
+           JSON with parentId, extent, dimensions, and layout coordinates without rate limit limits.
+        """
         if not image_base64.startswith("data:"):
             image_url = f"data:image/png;base64,{image_base64}"
         else:
             image_url = image_base64
 
-        user_content = [
+        # Step 1: Vision analysis with compact token usage
+        vision_prompt = (
+            "Analyze this diagram image in detail:\n"
+            "1. List all components/boxes with their exact text labels.\n"
+            "2. Note if any boxes are CONTAINERS enclosing other child blocks (e.g., a big box labeled 'Apache Pig' holding 'Parser', 'Optimizer', etc.).\n"
+            "3. List all directional arrows (source -> target) and their labels (if any).\n"
+            "Be precise and concise."
+        )
+
+        try:
+            vision_res = await self.client.chat.completions.create(
+                model="qwen/qwen3.8-27b",
+                max_tokens=400,
+                temperature=0.1,
+                timeout=45.0,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": vision_prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                    ],
+                }],
+            )
+            analysis_text = vision_res.choices[0].message.content or ""
+            logger.info(f"Vision analysis extracted: {analysis_text[:200]}...")
+        except Exception as e:
+            logger.error(f"Vision analysis failed: {e}")
+            return await self.fallback_engine.recreate_diagram_from_image(image_base64, topic_title, subject_context)
+
+        # Step 2: Assembly into React Flow JSON using high-capacity model
+        assembly_messages = [
+            {"role": "system", "content": IMAGE_DIAGRAM_SYSTEM_PROMPT},
             {
-                "type": "text",
-                "text": (
+                "role": "user",
+                "content": (
                     f"Subject: {subject_context or 'Computer Science / Engineering'}\n"
                     f"Topic: {topic_title}\n\n"
-                    "Carefully examine this image (ER diagram / system architecture / flow diagram). "
-                    "Extract and recreate all entity blocks, components, attributes, cardinality, and relationships "
-                    "into an interactive node-and-edge JSON graph. Return valid JSON only conforming to the system prompt."
+                    f"Convert this visual diagram analysis into the required node-and-edge JSON structure.\n"
+                    f"Pay special attention to container boxes: make them type 'group', give them a width/height, "
+                    f"and set parentId on child blocks.\n\n"
+                    f"VISUAL ANALYSIS:\n{analysis_text}"
                 ),
             },
-            {
-                "type": "image_url",
-                "image_url": {"url": image_url},
-            },
-        ]
-
-        messages = [
-            {"role": "system", "content": IMAGE_DIAGRAM_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
         ]
 
         try:
-            # Call vision model with JSON formatting
-            response = await self.client.chat.completions.create(
-                model="qwen/qwen3.8-27b",
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=0.1,
-                timeout=60.0,
-            )
-            raw = response.choices[0].message.content
-            parsed = json.loads(raw)
-            if "nodes" in parsed and "edges" in parsed and len(parsed["nodes"]) >= 1:
-                return parsed
-            logger.warning("Vision model output missing nodes/edges, falling back")
+            struct_res = await self._call_groq_json(assembly_messages)
+            if "nodes" in struct_res and "edges" in struct_res and len(struct_res["nodes"]) >= 1:
+                return struct_res
+            logger.warning("Assembly output missing nodes/edges, falling back")
             return await self.fallback_engine.recreate_diagram_from_image(image_base64, topic_title, subject_context)
         except Exception as e:
-            logger.error(f"Error in recreate_diagram_from_image: {e}")
+            logger.error(f"Structural assembly failed: {e}")
             return await self.fallback_engine.recreate_diagram_from_image(image_base64, topic_title, subject_context)
 
 

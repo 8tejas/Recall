@@ -131,36 +131,50 @@ Content rules:
 
 
 IMAGE_DIAGRAM_SYSTEM_PROMPT = """You are an expert system architect and visual diagram analyst.
-Your task is to analyze an uploaded diagram image (such as an Entity-Relationship (ER) diagram, UML diagram, system architecture, flow chart, or schema diagram) and accurately recreate it as an interactive node-and-edge graph JSON structure.
+Your task is to analyze an uploaded diagram image (such as an Entity-Relationship (ER) diagram, system architecture, flow chart, or data pipeline diagram) and accurately recreate it as an interactive node-and-edge graph JSON structure.
 
 Analyze the image carefully:
-1. Identify all entities, tables, database records, processes, or components as NODES.
-   - For ER diagrams: Each entity table (e.g., `Customer`, `Order`, `Product`) or relationship diamond/action is a node.
-   - For architecture: Each service, database, client, or load balancer is a node.
-2. Identify all relationships, foreign keys, cardinality connections (1:1, 1:N, M:N), or flow arrows as EDGES.
-   - Place cardinality or relationship verbs in edge `label` (e.g. `1:N`, `has`, `places`, `contains`, `FK: user_id`).
-3. Approximate 2D spatial arrangement (x, y coordinates in pixels) to reflect their positions in the image:
-   - Keep positions clean: spread nodes across 100px to 800px horizontally (x) and 50px to 600px vertically (y).
-   - Use spacing of at least 180px between adjacent nodes so they don't overlap.
-4. If there are subsystems or containers enclosing multiple components, you may use a "group" node or place them logically.
+1. Identify all entities, components, or stages:
+   - For regular blocks: use "type": "default" (or "input" for entrypoint, "output" for sink).
+2. CRITICAL - NESTED BOXES / CONTAINERS:
+   - When a larger box or subsystem encloses other smaller boxes (for example, "Apache Pig" enclosing "Grant Shell", "Parser", etc., or "Hadoop" enclosing "HDFS"):
+     a) Create an outer container node with "type": "group", set wide enough dimensions in "style": {"width": 450, "height": 380}, and "data": {"label": "Container Name"}.
+     b) For every child block that appears INSIDE this container:
+        - Set "parentId": "<container_node_id>"
+        - Set "extent": "parent"
+        - Set "position": {"x": relative_x_inside_container, "y": relative_y_inside_container} (Note: child coordinates must be relative to the top-left of the container, starting from (x: 20, y: 50)).
+3. Identify all relationships, process flows, or arrows as EDGES:
+   - Every connecting arrow between blocks or stages must be included in "edges".
+   - Use descriptive edge labels if present (e.g. protocol names, verbs, cardinality 1:N), or leave label as "" if it is a plain directional arrow.
+4. Top-level nodes (not inside a group) should have global canvas coordinates (x: 100-600, y: 50-800).
+5. All node and edge IDs must be clean unique alphanumeric strings (e.g. "pig_latin_scripts", "apache_pig", "parser", "e_scripts_pig").
 
 Output Format:
 Return ONLY valid JSON matching this schema — no markdown backticks, no explanatory text:
 {
   "nodes": [
     {
-      "id": "node_1",
+      "id": "apache_pig",
+      "type": "group",
+      "position": {"x": 150, "y": 140},
+      "style": {"width": 420, "height": 360},
+      "data": {"label": "Apache Pig"}
+    },
+    {
+      "id": "parser",
       "type": "default",
-      "position": {"x": 100, "y": 100},
-      "data": {"label": "Customer"}
+      "parentId": "apache_pig",
+      "extent": "parent",
+      "position": {"x": 150, "y": 80},
+      "data": {"label": "Parser"}
     }
   ],
   "edges": [
     {
-      "id": "e_node_1_node_2",
-      "source": "node_1",
-      "target": "node_2",
-      "label": "places (1:N)",
+      "id": "e_scripts_pig",
+      "source": "pig_latin_scripts",
+      "target": "apache_pig",
+      "label": "",
       "animated": false
     }
   ]
