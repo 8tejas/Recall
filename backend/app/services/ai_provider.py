@@ -22,6 +22,7 @@ from backend.app.prompts.academic_prompts import (
     MCQ_ASSESSMENT_SYSTEM_PROMPT,
     TOPIC_QA_SYSTEM_PROMPT,
     FLOW_DIAGRAM_SYSTEM_PROMPT,
+    IMAGE_DIAGRAM_SYSTEM_PROMPT,
 )
 from backend.app.services.memorization_engine import MemorizationEngine
 
@@ -109,6 +110,16 @@ class AIProviderInterface(ABC):
         subject_context: str,
     ) -> Dict[str, Any]:
         """Generate a node-edge flow diagram JSON for architecture/flow memorization."""
+        pass
+
+    @abstractmethod
+    async def recreate_diagram_from_image(
+        self,
+        image_base64: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        """Recreate an ER diagram, architecture, or flow diagram from an uploaded image."""
         pass
 
 
@@ -901,6 +912,36 @@ class AcademicFallbackProvider(AIProviderInterface):
                 })
         return {"nodes": nodes, "edges": edges}
 
+    async def recreate_diagram_from_image(
+        self,
+        image_base64: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        """Fallback for ER/flow diagram recreation from image."""
+        entities = [f"{topic_title} Entity", "Attributes / Subsystem", "Related Record", "Audit Log"]
+        nodes = []
+        edges = []
+        positions = [
+            {"x": 150, "y": 80},
+            {"x": 420, "y": 80},
+            {"x": 150, "y": 280},
+            {"x": 420, "y": 280},
+        ]
+        for idx, name in enumerate(entities):
+            nodes.append({
+                "id": f"entity_{idx + 1}",
+                "type": "default",
+                "position": positions[idx],
+                "data": {"label": name},
+            })
+        edges = [
+            {"id": "e1-2", "source": "entity_1", "target": "entity_2", "label": "1:N", "animated": False},
+            {"id": "e1-3", "source": "entity_1", "target": "entity_3", "label": "has", "animated": False},
+            {"id": "e3-4", "source": "entity_3", "target": "entity_4", "label": "logs", "animated": False},
+        ]
+        return {"nodes": nodes, "edges": edges}
+
 
 class GroqProvider(AIProviderInterface):
     """
@@ -1253,6 +1294,60 @@ class GroqProvider(AIProviderInterface):
         except Exception as e:
             logger.warning(f"Groq generate_flow_diagram error, falling back: {e}")
             return await self.fallback_engine.generate_flow_diagram(prompt, topic_title, subject_context)
+
+    async def recreate_diagram_from_image(
+        self,
+        image_base64: str,
+        topic_title: str,
+        subject_context: str,
+    ) -> Dict[str, Any]:
+        """Analyze an uploaded diagram image with vision model and recreate its node-edge graph."""
+        # Ensure proper data URL format
+        if not image_base64.startswith("data:"):
+            image_url = f"data:image/png;base64,{image_base64}"
+        else:
+            image_url = image_base64
+
+        user_content = [
+            {
+                "type": "text",
+                "text": (
+                    f"Subject: {subject_context or 'Computer Science / Engineering'}\n"
+                    f"Topic: {topic_title}\n\n"
+                    "Carefully examine this image (ER diagram / system architecture / flow diagram). "
+                    "Extract and recreate all entity blocks, components, attributes, cardinality, and relationships "
+                    "into an interactive node-and-edge JSON graph. Return valid JSON only conforming to the system prompt."
+                ),
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": image_url},
+            },
+        ]
+
+        messages = [
+            {"role": "system", "content": IMAGE_DIAGRAM_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ]
+
+        try:
+            # Call vision model with JSON formatting
+            response = await self.client.chat.completions.create(
+                model="qwen/qwen3.8-27b",
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.1,
+                timeout=60.0,
+            )
+            raw = response.choices[0].message.content
+            parsed = json.loads(raw)
+            if "nodes" in parsed and "edges" in parsed and len(parsed["nodes"]) >= 1:
+                return parsed
+            logger.warning("Vision model output missing nodes/edges, falling back")
+            return await self.fallback_engine.recreate_diagram_from_image(image_base64, topic_title, subject_context)
+        except Exception as e:
+            logger.error(f"Error in recreate_diagram_from_image: {e}")
+            return await self.fallback_engine.recreate_diagram_from_image(image_base64, topic_title, subject_context)
 
 
 

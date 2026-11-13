@@ -244,6 +244,18 @@ export const generateFlowDiagram = async (
   return res.data;
 };
 
+export const createDiagramFromImage = async (
+  topicId: string,
+  name: string,
+  imageBase64: string,
+): Promise<FlowDiagram> => {
+  const res = await api.post(`/topics/${topicId}/flow-diagrams/from-image`, {
+    name,
+    image_base64: imageBase64,
+  });
+  return res.data;
+};
+
 export const saveFlowDiagram = async (
   topicId: string,
   diagramId: string,

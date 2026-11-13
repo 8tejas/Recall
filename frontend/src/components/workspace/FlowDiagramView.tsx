@@ -42,8 +42,16 @@ import {
   BoxSelect,
   ArrowRight,
   X,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
-import { fetchFlowDiagrams, generateFlowDiagram, saveFlowDiagram, deleteFlowDiagram } from '../../api/client';
+import {
+  fetchFlowDiagrams,
+  generateFlowDiagram,
+  createDiagramFromImage,
+  saveFlowDiagram,
+  deleteFlowDiagram,
+} from '../../api/client';
 import { FlowDiagram } from '../../types';
 
 // ─── Custom Block Node ──────────────────────────────────────────────────────────
@@ -856,10 +864,14 @@ export const FlowDiagramView: React.FC<Props> = ({ topicId, topicTitle }) => {
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createMode, setCreateMode] = useState<'prompt' | 'image'>('prompt');
   const [newName, setNewName] = useState('');
   const [newPrompt, setNewPrompt] = useState('');
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDiagrams = async () => {
     try {
@@ -874,17 +886,63 @@ export const FlowDiagramView: React.FC<Props> = ({ topicId, topicTitle }) => {
 
   useEffect(() => { loadDiagrams(); }, [topicId]);
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setGenError('Please select a valid image file (PNG, JPG, WebP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setGenError('Image file is too large. Please select an image under 10MB.');
+      return;
+    }
+
+    setGenError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setImagePreview(result);
+      setSelectedImageBase64(result);
+      if (!newName.trim()) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        setNewName(cleanName || `${topicTitle} ER Diagram`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGenerate = async () => {
-    if (!newName.trim() || !newPrompt.trim()) return;
+    if (!newName.trim()) return;
     setIsGenerating(true);
     setGenError(null);
     try {
-      const diagram = await generateFlowDiagram(topicId, newName.trim(), newPrompt.trim());
+      let diagram: FlowDiagram;
+      if (createMode === 'image') {
+        if (!selectedImageBase64) {
+          setGenError('Please upload an image first.');
+          setIsGenerating(false);
+          return;
+        }
+        diagram = await createDiagramFromImage(topicId, newName.trim(), selectedImageBase64);
+      } else {
+        if (!newPrompt.trim()) {
+          setGenError('Please describe the architecture or flow.');
+          setIsGenerating(false);
+          return;
+        }
+        diagram = await generateFlowDiagram(topicId, newName.trim(), newPrompt.trim());
+      }
+
       setDiagrams((prev) => [...prev, diagram]);
       setActiveDiagram(diagram);
       setShowCreateForm(false);
       setNewName('');
       setNewPrompt('');
+      setSelectedImageBase64(null);
+      setImagePreview(null);
     } catch (err: any) {
       setGenError(err?.response?.data?.detail ?? 'Generation failed. Please try again.');
     } finally {
@@ -958,10 +1016,34 @@ export const FlowDiagramView: React.FC<Props> = ({ topicId, topicTitle }) => {
         <div className="border border-stone-200 dark:border-stone-700 rounded-lg p-5 bg-stone-50/50 dark:bg-stone-900/60 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 uppercase tracking-wide">
-              New Flow Diagram
+              Create Flow / Architecture Diagram
             </span>
             <button onClick={() => setShowCreateForm(false)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
               <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Mode Switcher: Prompt vs Upload Image */}
+          <div className="flex p-0.5 rounded-lg bg-stone-200/70 dark:bg-stone-800 text-xs font-medium max-w-sm">
+            <button
+              onClick={() => { setCreateMode('prompt'); setGenError(null); }}
+              className={`flex-1 py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                createMode === 'prompt'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm font-semibold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Prompt Architecture
+            </button>
+            <button
+              onClick={() => { setCreateMode('image'); setGenError(null); }}
+              className={`flex-1 py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                createMode === 'image'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm font-semibold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5" /> Upload Diagram Photo
             </button>
           </div>
 
@@ -973,35 +1055,94 @@ export const FlowDiagramView: React.FC<Props> = ({ topicId, topicTitle }) => {
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. TCP Handshake"
+              placeholder={createMode === 'image' ? 'e.g. E-Commerce ER Diagram' : 'e.g. TCP Handshake'}
               className="w-full px-3 py-2 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
-              Describe the Architecture / Flow to Memorize
-            </label>
-            <textarea
-              value={newPrompt}
-              onChange={(e) => setNewPrompt(e.target.value)}
-              placeholder={`e.g. "TCP 3-way handshake between client and server" or "OSI model 7 layers from application to physical"`}
-              rows={3}
-              className="w-full px-3 py-2 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors resize-none"
-            />
-            {/* Suggestion chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => { setNewName(s); setNewPrompt(s); }}
-                  className="px-2 py-1 rounded-full text-[11px] border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition-colors bg-white dark:bg-stone-800"
-                >
-                  {s}
-                </button>
-              ))}
+          {createMode === 'prompt' ? (
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                Describe the Architecture / Flow to Memorize
+              </label>
+              <textarea
+                value={newPrompt}
+                onChange={(e) => setNewPrompt(e.target.value)}
+                placeholder={`e.g. "TCP 3-way handshake between client and server" or "OSI model 7 layers from application to physical"`}
+                rows={3}
+                className="w-full px-3 py-2 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 outline-none focus:border-stone-400 dark:focus:border-stone-500 transition-colors resize-none"
+              />
+              {/* Suggestion chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setNewName(s); setNewPrompt(s); }}
+                    className="px-2 py-1 rounded-full text-[11px] border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 hover:text-stone-800 dark:hover:text-stone-200 transition-colors bg-white dark:bg-stone-800"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wide">
+                Upload ER / Architecture Photo
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileChange}
+                className="hidden"
+              />
+
+              {imagePreview ? (
+                <div className="relative border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-lg p-3 bg-white dark:bg-stone-800 flex flex-col items-center gap-2">
+                  <img
+                    src={imagePreview}
+                    alt="Uploaded Diagram"
+                    className="max-h-56 object-contain rounded border border-stone-200 dark:border-stone-700 shadow-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1 text-xs rounded bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 transition-colors"
+                    >
+                      Change Image
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedImageBase64(null);
+                        setImagePreview(null);
+                      }}
+                      className="px-2.5 py-1 text-xs rounded bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="cursor-pointer border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-violet-500 dark:hover:border-violet-400 rounded-lg p-8 flex flex-col items-center justify-center gap-2 text-center transition-colors bg-white dark:bg-stone-800/60"
+                >
+                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center text-violet-600 dark:text-violet-400">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                      Click to upload diagram photo
+                    </span>
+                    <p className="text-[11px] text-stone-400 mt-0.5">
+                      Supports PNG, JPG, or WebP (ER diagrams, database schemas, flowcharts)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {genError && (
             <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded px-3 py-2">
@@ -1012,11 +1153,22 @@ export const FlowDiagramView: React.FC<Props> = ({ topicId, topicTitle }) => {
           <div className="flex justify-end">
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !newName.trim() || !newPrompt.trim()}
+              disabled={
+                isGenerating ||
+                !newName.trim() ||
+                (createMode === 'prompt' && !newPrompt.trim()) ||
+                (createMode === 'image' && !selectedImageBase64)
+              }
               className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              {isGenerating ? 'Generating…' : 'Generate Diagram'}
+              {isGenerating
+                ? createMode === 'image'
+                  ? 'Analyzing & Recreating…'
+                  : 'Generating…'
+                : createMode === 'image'
+                ? 'Recreate from Photo'
+                : 'Generate Diagram'}
             </button>
           </div>
         </div>

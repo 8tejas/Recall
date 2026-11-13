@@ -449,6 +449,11 @@ class FlowDiagramGenerateRequest(BaseModel):
                         description="Describe the architecture or flow to generate (e.g. 'TCP 3-way handshake')")
 
 
+class FlowDiagramFromImageRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    image_base64: str = Field(..., min_length=100, description="Base64 data URL or raw base64 string of the uploaded diagram photo")
+
+
 class FlowDiagramSaveRequest(BaseModel):
     name: Optional[str] = None
     nodes_json: str  # JSON-encoded list of node dicts

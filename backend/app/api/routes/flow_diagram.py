@@ -15,6 +15,7 @@ from backend.app.api.deps import get_current_user
 from backend.app.models.all_models import FlowDiagram, Topic, LearningMaterial, User
 from backend.app.schemas.all_schemas import (
     FlowDiagramGenerateRequest,
+    FlowDiagramFromImageRequest,
     FlowDiagramSaveRequest,
     FlowDiagramOut,
 )
@@ -96,6 +97,48 @@ async def generate_flow_diagram(
         user_id=current_user.id,
         name=body.name,
         prompt=body.prompt,
+        nodes_json=json.dumps(result.get("nodes", [])),
+        edges_json=json.dumps(result.get("edges", [])),
+    )
+    db.add(diagram)
+    db.commit()
+    db.refresh(diagram)
+    return diagram
+
+
+@router.post("/topics/{topic_id}/flow-diagrams/from-image", response_model=FlowDiagramOut)
+async def create_diagram_from_image(
+    topic_id: str,
+    body: FlowDiagramFromImageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    subject_context = ""
+    try:
+        subject_context = topic.unit.subject.name if topic.unit and topic.unit.subject else ""
+    except Exception:
+        pass
+
+    ai = get_ai_provider()
+    try:
+        result = await ai.recreate_diagram_from_image(
+            image_base64=body.image_base64,
+            topic_title=topic.title,
+            subject_context=subject_context,
+        )
+    except Exception as e:
+        logger.error(f"Image diagram recreation failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to analyze and recreate diagram from image.")
+
+    diagram = FlowDiagram(
+        topic_id=topic_id,
+        user_id=current_user.id,
+        name=body.name,
+        prompt="[Recreated from uploaded ER/flow diagram photo]",
         nodes_json=json.dumps(result.get("nodes", [])),
         edges_json=json.dumps(result.get("edges", [])),
     )
