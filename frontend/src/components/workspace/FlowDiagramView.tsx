@@ -10,6 +10,10 @@ import {
   MiniMap,
   useReactFlow,
   ReactFlowProvider,
+  Handle,
+  Position,
+  NodeResizer,
+  MarkerType,
   type Node,
   type Edge,
   type OnNodesChange,
@@ -31,11 +35,13 @@ import {
   RotateCcw,
   Pencil,
   Share2,
+  BoxSelect,
+  ArrowRight,
 } from 'lucide-react';
 import { fetchFlowDiagrams, generateFlowDiagram, saveFlowDiagram, deleteFlowDiagram } from '../../api/client';
 import { FlowDiagram } from '../../types';
 
-// ─── Custom Node ────────────────────────────────────────────────────────────────
+// ─── Custom Block Node ──────────────────────────────────────────────────────────
 
 interface CustomNodeData {
   label: string;
@@ -46,62 +52,127 @@ interface CustomNodeData {
   onRecallInput?: (id: string, value: string) => void;
 }
 
-const CustomNode: React.FC<NodeProps> = ({ id, data, type }) => {
+const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
   const d = data as unknown as CustomNodeData;
   const isInput = type === 'input';
   const isOutput = type === 'output';
-  const baseStyle = `px-4 py-2.5 rounded-lg border-2 text-xs font-medium min-w-[120px] max-w-[180px] text-center transition-all shadow-sm`;
+  const isEdit = d.mode === 'edit';
 
   const colorClass = isInput
-    ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 dark:border-emerald-600 text-emerald-800 dark:text-emerald-300'
+    ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/70 dark:border-emerald-600 text-emerald-800 dark:text-emerald-300'
     : isOutput
-    ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/60 dark:border-rose-600 text-rose-800 dark:text-rose-300'
-    : 'border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200';
+    ? 'border-rose-400 bg-rose-50/90 dark:bg-rose-950/70 dark:border-rose-600 text-rose-800 dark:text-rose-300'
+    : 'border-stone-300 dark:border-stone-600 bg-white/95 dark:bg-stone-800/95 text-stone-800 dark:text-stone-200';
 
   const recallColorClass =
     d.recallResult === 'correct'
-      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60'
+      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/80'
       : d.recallResult === 'incorrect'
-      ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/60'
-      : 'border-violet-400 bg-violet-50 dark:bg-violet-950/60 dark:border-violet-600';
-
-  if (d.mode === 'recall') {
-    return (
-      <div className={`${baseStyle} ${recallColorClass} flex flex-col items-center gap-1.5`}>
-        <input
-          type="text"
-          value={d.recallValue ?? ''}
-          onChange={(e) => d.onRecallInput?.(id, e.target.value)}
-          placeholder="Type name..."
-          className="w-full text-center bg-transparent border-b border-current/30 outline-none placeholder-stone-400/60 dark:placeholder-stone-500/60 text-xs py-0.5"
-        />
-        {d.recallResult === 'correct' && (
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-            <CheckCircle2 className="w-3 h-3" /> {d.label}
-          </span>
-        )}
-        {d.recallResult === 'incorrect' && (
-          <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-0.5">
-            <XCircle className="w-3 h-3" /> {d.label}
-          </span>
-        )}
-      </div>
-    );
-  }
+      ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/80'
+      : 'border-violet-400 bg-violet-50 dark:bg-violet-950/80 dark:border-violet-600';
 
   return (
-    <div className={`${baseStyle} ${colorClass}`}>
-      <input
-        type="text"
-        value={d.label}
-        onChange={(e) => d.onLabelChange?.(id, e.target.value)}
-        className="w-full text-center bg-transparent outline-none font-medium text-xs"
+    <div
+      className={`relative w-full h-full min-w-[120px] min-h-[50px] px-3 py-2 rounded-lg border-2 text-xs font-medium flex items-center justify-center text-center transition-shadow shadow-sm ${
+        d.mode === 'recall' ? recallColorClass : colorClass
+      } ${selected && isEdit ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+    >
+      {/* Resizer control in edit mode */}
+      <NodeResizer
+        isVisible={!!selected && isEdit}
+        minWidth={90}
+        minHeight={45}
+        lineClassName="!border-blue-400"
+        handleClassName="!w-2.5 !h-2.5 !bg-blue-500 !border-white"
       />
+
+      {/* Target & Source handles on all 4 sides for easy arrow connections */}
+      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
+      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
+      <Handle type="target" position={Position.Left} id="left-target" className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
+      <Handle type="source" position={Position.Right} id="right-source" className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
+
+      {d.mode === 'recall' ? (
+        <div className="w-full flex flex-col items-center gap-1">
+          <input
+            type="text"
+            value={d.recallValue ?? ''}
+            onChange={(e) => d.onRecallInput?.(id, e.target.value)}
+            placeholder="Name this block..."
+            className="w-full text-center bg-transparent border-b border-current/40 outline-none placeholder-stone-400/70 text-xs py-0.5"
+          />
+          {d.recallResult === 'correct' && (
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
+              <CheckCircle2 className="w-3 h-3" /> {d.label}
+            </span>
+          )}
+          {d.recallResult === 'incorrect' && (
+            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-0.5">
+              <XCircle className="w-3 h-3" /> {d.label}
+            </span>
+          )}
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={d.label}
+          onChange={(e) => d.onLabelChange?.(id, e.target.value)}
+          className="w-full text-center bg-transparent outline-none font-medium text-xs break-words"
+        />
+      )}
     </div>
   );
 };
 
-const nodeTypes = { input: CustomNode, output: CustomNode, default: CustomNode };
+// ─── Custom Group Container Node (Box inside Box) ──────────────────────────────
+
+const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
+  const d = data as unknown as CustomNodeData;
+  const isEdit = d.mode === 'edit';
+
+  return (
+    <div
+      className={`relative w-full h-full min-w-[220px] min-h-[140px] rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-900/40 p-2.5 transition-shadow ${
+        selected && isEdit ? 'ring-2 ring-purple-500' : ''
+      }`}
+    >
+      <NodeResizer
+        isVisible={!!selected && isEdit}
+        minWidth={160}
+        minHeight={100}
+        lineClassName="!border-purple-400"
+        handleClassName="!w-2.5 !h-2.5 !bg-purple-500 !border-white"
+      />
+      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400" />
+      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400" />
+
+      {/* Group header title */}
+      <div className="flex items-center gap-1.5 pb-2 border-b border-stone-200/60 dark:border-stone-800">
+        <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-stone-500 font-mono">
+          GROUP
+        </span>
+        {isEdit ? (
+          <input
+            type="text"
+            value={d.label}
+            onChange={(e) => d.onLabelChange?.(id, e.target.value)}
+            className="text-xs font-semibold bg-transparent outline-none text-stone-700 dark:text-stone-300 w-full"
+            placeholder="Group Title (e.g. Backend Cluster)"
+          />
+        ) : (
+          <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{d.label}</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const nodeTypes = {
+  input: CustomNode,
+  output: CustomNode,
+  default: CustomNode,
+  group: GroupNode,
+};
 
 // ─── Inner canvas (needs ReactFlowProvider context) ─────────────────────────
 
@@ -113,6 +184,19 @@ interface CanvasProps {
   onConnect: OnConnect;
   mode: 'edit' | 'recall';
 }
+
+const defaultEdgeOptions = {
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 16,
+    height: 16,
+    color: '#78716c',
+  },
+  style: {
+    strokeWidth: 2,
+    stroke: '#78716c',
+  },
+};
 
 const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesChange, onConnect, mode }) => {
   const { fitView } = useReactFlow();
@@ -126,6 +210,7 @@ const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesCha
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       nodeTypes={nodeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
       fitView
       fitViewOptions={{ padding: 0.15 }}
       nodesDraggable={mode === 'edit'}
@@ -140,7 +225,13 @@ const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesCha
       <MiniMap
         className="!bg-stone-100 dark:!bg-stone-800 !border-stone-200 dark:!border-stone-700"
         nodeColor={(n) =>
-          n.type === 'input' ? '#6ee7b7' : n.type === 'output' ? '#fca5a5' : '#d6d3d1'
+          n.type === 'input'
+            ? '#6ee7b7'
+            : n.type === 'output'
+            ? '#fca5a5'
+            : n.type === 'group'
+            ? '#c084fc'
+            : '#d6d3d1'
         }
       />
     </ReactFlow>
@@ -199,8 +290,18 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
   useEffect(() => {
     const base = parseNodes(diagram.nodes_json);
+    const parsedEdges = parseEdges(diagram.edges_json).map((e) => ({
+      ...e,
+      markerEnd: e.markerEnd || {
+        type: MarkerType.ArrowClosed,
+        width: 16,
+        height: 16,
+        color: '#78716c',
+      },
+      style: e.style || { strokeWidth: 2, stroke: '#78716c' },
+    }));
     setNodes(buildDisplayNodes(base, mode, {}, {}));
-    setEdges(parseEdges(diagram.edges_json));
+    setEdges(parsedEdges);
   }, [diagram]);
 
   // Keep callbacks fresh when inputs/results change
@@ -219,13 +320,45 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const onConnect: OnConnect = useCallback(
     (connection) => {
       const edgeId = `e${connection.source}-${connection.target}-${Date.now()}`;
-      setEdges((eds) => addEdge({ ...connection, id: edgeId, label: '', animated: false }, eds));
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            id: edgeId,
+            label: '',
+            animated: false,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 16,
+              height: 16,
+              color: '#78716c',
+            },
+            style: {
+              strokeWidth: 2,
+              stroke: '#78716c',
+            },
+          },
+          eds
+        )
+      );
     },
     []
   );
 
-  const addNode = () => {
+  const addNode = (type: 'default' | 'group' = 'default') => {
     const id = `n${nextId.current++}`;
+    if (type === 'group') {
+      const newGroup: Node = {
+        id,
+        type: 'group',
+        position: { x: 100 + Math.random() * 40, y: nodes.length * 80 },
+        style: { width: 340, height: 220 },
+        data: { label: 'Container Box' },
+      };
+      setNodes((prev) => buildDisplayNodes([newGroup, ...prev], mode, recallInputs, recallResults));
+      return;
+    }
+
     const newNode: Node = {
       id,
       type: 'default',
@@ -235,19 +368,43 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     setNodes((prev) => buildDisplayNodes([...prev, newNode], mode, recallInputs, recallResults));
   };
 
+  const addNestedNode = (parentId: string) => {
+    const id = `n${nextId.current++}`;
+    const newNode: Node = {
+      id,
+      type: 'default',
+      parentId,
+      extent: 'parent',
+      position: { x: 30 + Math.random() * 30, y: 50 + Math.random() * 40 },
+      data: { label: 'Inner Block' },
+    };
+    setNodes((prev) => buildDisplayNodes([...prev, newNode], mode, recallInputs, recallResults));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Strip injected callback data before saving
+      // Strip injected callback data before saving, keeping styles, dimensions, parentId, extent
       const cleanNodes = nodes.map(({ data, ...rest }) => ({
         ...rest,
         data: { label: (data as any).label },
+      }));
+      // Ensure all edges have markerEnd arrow
+      const cleanEdges = edges.map((e) => ({
+        ...e,
+        markerEnd: e.markerEnd || {
+          type: MarkerType.ArrowClosed,
+          width: 16,
+          height: 16,
+          color: '#78716c',
+        },
+        style: e.style || { strokeWidth: 2, stroke: '#78716c' },
       }));
       const saved = await saveFlowDiagram(
         topicId,
         diagram.id,
         JSON.stringify(cleanNodes),
-        JSON.stringify(edges),
+        JSON.stringify(cleanEdges),
         diagramName,
       );
       setSaveMsg('Saved!');
@@ -305,11 +462,31 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
           {mode === 'edit' ? (
             <>
               <button
-                onClick={addNode}
+                onClick={() => addNode('default')}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                title="Add a regular diagram block"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Block
               </button>
+              <button
+                onClick={() => addNode('group')}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 transition-colors"
+                title="Add an outer container box that can hold nested blocks"
+              >
+                <BoxSelect className="w-3.5 h-3.5" /> Add Outer Container
+              </button>
+              {nodes.some((n) => n.type === 'group') && (
+                <button
+                  onClick={() => {
+                    const firstGroup = nodes.find((n) => n.type === 'group');
+                    if (firstGroup) addNestedNode(firstGroup.id);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 hover:bg-purple-200 transition-colors"
+                  title="Add a block directly inside the container box"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Nest Inside Box
+                </button>
+              )}
               <button
                 onClick={enterRecall}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/60 border border-violet-200 dark:border-violet-700 transition-colors"
@@ -386,10 +563,11 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
       {/* Edit mode hint */}
       {mode === 'edit' && (
-        <div className="px-4 py-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-400 dark:text-stone-500 shrink-0 flex items-center gap-3">
-          <span>• Drag blocks to rearrange</span>
-          <span>• Click a label to rename</span>
-          <span>• Drag from a block handle to connect</span>
+        <div className="px-4 py-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-400 dark:text-stone-500 shrink-0 flex items-center gap-3 flex-wrap">
+          <span>• <strong>Add arrow:</strong> Click & drag from any dot (top/bottom/left/right) to another block</span>
+          <span>• <strong>Reshape / resize:</strong> Click a block to reveal blue/purple corner handles and drag</span>
+          <span>• <strong>Boxes in boxes:</strong> Click <em>Add Outer Container</em>, then <em>Nest Inside Box</em></span>
+          <span>• <strong>Rename:</strong> Click text to edit</span>
         </div>
       )}
     </div>
