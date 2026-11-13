@@ -14,6 +14,7 @@ import {
   Position,
   NodeResizer,
   MarkerType,
+  ConnectionMode,
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
@@ -47,6 +48,11 @@ import {
   Hammer,
   HelpCircle,
   AlertCircle,
+  Maximize2,
+  Minimize2,
+  Link2,
+  Focus,
+  MoreVertical,
 } from 'lucide-react';
 import {
   fetchFlowDiagrams,
@@ -62,6 +68,7 @@ import { FlowDiagram } from '../../types';
 interface CustomNodeData {
   label: string;
   mode: 'edit' | 'recall' | 'build';
+  isConnectSource?: boolean;
   recallValue?: string;
   recallResult?: 'correct' | 'incorrect' | null;
   onLabelChange?: (id: string, label: string) => void;
@@ -74,6 +81,7 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
   const isInput = type === 'input';
   const isOutput = type === 'output';
   const isEdit = d.mode === 'edit';
+  const isConnectSource = !!d.isConnectSource;
 
   const colorClass = isInput
     ? 'border-emerald-400 bg-emerald-50/90 dark:bg-emerald-950/70 dark:border-emerald-600 text-emerald-800 dark:text-emerald-300'
@@ -88,11 +96,20 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
       ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/80'
       : 'border-violet-400 bg-violet-50 dark:bg-violet-950/80 dark:border-violet-600';
 
+  const handleClass =
+    "!w-3 !h-3 sm:!w-2 sm:!h-2 !bg-stone-400 hover:!bg-blue-500 transition-transform hover:scale-125 after:content-[''] after:absolute after:-inset-3.5 after:bg-transparent";
+
   return (
     <div
-      className={`relative w-full h-full min-w-[120px] min-h-[50px] px-3 py-2 rounded-lg border-2 text-xs font-medium flex items-center justify-center text-center transition-shadow shadow-sm ${
+      className={`relative w-full h-full min-w-[120px] min-h-[50px] px-3 py-2 rounded-lg border-2 text-xs font-medium flex items-center justify-center text-center transition-all shadow-sm ${
         d.mode === 'recall' ? recallColorClass : colorClass
-      } ${selected && isEdit ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+      } ${
+        isConnectSource
+          ? 'ring-4 ring-blue-500 ring-offset-2 animate-pulse !border-blue-500'
+          : selected && isEdit
+          ? 'ring-2 ring-blue-500 ring-offset-1'
+          : ''
+      }`}
     >
       {/* Resizer control in edit mode */}
       <NodeResizer
@@ -100,7 +117,7 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
         minWidth={90}
         minHeight={45}
         lineClassName="!border-blue-400"
-        handleClassName="!w-2.5 !h-2.5 !bg-blue-500 !border-white"
+        handleClassName="!w-3 !h-3 sm:!w-2.5 sm:!h-2.5 !bg-blue-500 !border-white"
       />
 
       {/* Delete button when selected in edit mode */}
@@ -110,18 +127,18 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
             e.stopPropagation();
             d.onDeleteNode?.(id);
           }}
-          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
+          className="absolute -top-2.5 -right-2.5 w-6 h-6 sm:w-5 sm:h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
           title="Delete block"
         >
-          <X className="w-3 h-3" />
+          <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
         </button>
       )}
 
-      {/* Target & Source handles on all 4 sides for easy arrow connections */}
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
-      <Handle type="target" position={Position.Left} id="left-target" className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
-      <Handle type="source" position={Position.Right} id="right-source" className="!w-2 !h-2 !bg-stone-400 hover:!bg-blue-500" />
+      {/* Target & Source handles on all 4 sides for easy arrow connections with touch hit area */}
+      <Handle type="target" position={Position.Top} className={handleClass} />
+      <Handle type="source" position={Position.Bottom} className={handleClass} />
+      <Handle type="target" position={Position.Left} id="left-target" className={handleClass} />
+      <Handle type="source" position={Position.Right} id="right-source" className={handleClass} />
 
       {d.mode === 'recall' ? (
         <div className="w-full flex flex-col items-center gap-1 nodrag nopan">
@@ -136,7 +153,7 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             placeholder="Name this block..."
-            className="w-full text-center bg-white/80 dark:bg-stone-900/80 rounded px-1.5 py-1 border border-violet-300 dark:border-violet-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 text-xs font-semibold focus:ring-1 focus:ring-violet-500"
+            className="w-full text-center bg-white/80 dark:bg-stone-900/80 rounded px-1.5 py-1 border border-violet-300 dark:border-violet-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 text-sm sm:text-xs font-semibold focus:ring-1 focus:ring-violet-500"
           />
           {d.recallResult === 'correct' && (
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
@@ -156,7 +173,7 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
           onChange={(e) => d.onLabelChange?.(id, e.target.value)}
           onKeyDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="w-full text-center bg-transparent outline-none font-medium text-xs break-words nodrag"
+          className="w-full text-center bg-transparent outline-none font-medium text-sm sm:text-xs break-words nodrag"
         />
       )}
     </div>
@@ -168,11 +185,19 @@ const CustomNode: React.FC<NodeProps> = ({ id, data, type, selected }) => {
 const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const d = data as unknown as CustomNodeData;
   const isEdit = d.mode === 'edit';
+  const isConnectSource = !!d.isConnectSource;
+
+  const handleClass =
+    "!w-3 !h-3 sm:!w-2 sm:!h-2 !bg-stone-400 hover:!bg-purple-500 transition-transform hover:scale-125 after:content-[''] after:absolute after:-inset-3.5 after:bg-transparent";
 
   return (
     <div
-      className={`relative w-full h-full min-w-[220px] min-h-[140px] rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-900/40 p-2.5 transition-shadow ${
-        selected && isEdit ? 'ring-2 ring-purple-500' : ''
+      className={`relative w-full h-full min-w-[220px] min-h-[140px] rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-900/40 p-2.5 transition-all ${
+        isConnectSource
+          ? 'ring-4 ring-purple-500 ring-offset-2 animate-pulse !border-purple-500'
+          : selected && isEdit
+          ? 'ring-2 ring-purple-500'
+          : ''
       }`}
     >
       <NodeResizer
@@ -180,7 +205,7 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         minWidth={160}
         minHeight={100}
         lineClassName="!border-purple-400"
-        handleClassName="!w-2.5 !h-2.5 !bg-purple-500 !border-white"
+        handleClassName="!w-3 !h-3 sm:!w-2.5 sm:!h-2.5 !bg-purple-500 !border-white"
       />
 
       {/* Delete button when container is selected in edit mode */}
@@ -190,15 +215,17 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             e.stopPropagation();
             d.onDeleteNode?.(id);
           }}
-          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
+          className="absolute -top-2.5 -right-2.5 w-6 h-6 sm:w-5 sm:h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-md nodrag nopan z-20 transition-transform hover:scale-110"
           title="Delete container"
         >
-          <X className="w-3 h-3" />
+          <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
         </button>
       )}
 
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-stone-400" />
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-stone-400" />
+      <Handle type="target" position={Position.Top} className={handleClass} />
+      <Handle type="source" position={Position.Bottom} className={handleClass} />
+      <Handle type="target" position={Position.Left} id="group-left" className={handleClass} />
+      <Handle type="source" position={Position.Right} id="group-right" className={handleClass} />
 
       {/* Group header title */}
       <div className="flex items-center gap-1.5 pb-2 border-b border-stone-200/60 dark:border-stone-800 nodrag nopan">
@@ -212,7 +239,7 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             onChange={(e) => d.onLabelChange?.(id, e.target.value)}
             onKeyDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="text-xs font-semibold bg-transparent outline-none text-stone-700 dark:text-stone-300 w-full nodrag"
+            className="text-sm sm:text-xs font-semibold bg-transparent outline-none text-stone-700 dark:text-stone-300 w-full nodrag"
             placeholder="Group Title (e.g. Backend Cluster)"
           />
         ) : d.mode === 'recall' ? (
@@ -226,7 +253,7 @@ const GroupNode: React.FC<NodeProps> = ({ id, data, selected }) => {
               }}
               onKeyDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              className="text-xs font-semibold bg-white/80 dark:bg-stone-900/80 rounded px-1 py-0.5 border border-purple-300 dark:border-purple-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 w-full"
+              className="text-sm sm:text-xs font-semibold bg-white/80 dark:bg-stone-900/80 rounded px-1 py-0.5 border border-purple-300 dark:border-purple-700 outline-none text-stone-900 dark:text-stone-100 placeholder-stone-400 w-full"
               placeholder="Name group..."
             />
             {d.recallResult === 'correct' && (
@@ -318,10 +345,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
                   e.stopPropagation();
                   d?.onDeleteEdge?.(id);
                 }}
-                className="w-3.5 h-3.5 rounded-full bg-stone-200 hover:bg-rose-500 hover:text-white dark:bg-stone-700 text-stone-500 flex items-center justify-center transition-colors"
+                className="w-5 h-5 sm:w-3.5 sm:h-3.5 rounded-full bg-stone-200 hover:bg-rose-500 hover:text-white dark:bg-stone-700 text-stone-500 flex items-center justify-center transition-colors touch-manipulation"
                 title="Delete arrow"
               >
-                <X className="w-2.5 h-2.5" />
+                <X className="w-3 h-3 sm:w-2.5 sm:h-2.5" />
               </button>
             </>
           ) : (
@@ -357,6 +384,10 @@ interface CanvasProps {
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   mode: 'edit' | 'recall' | 'build';
+  onNodeClick?: (e: React.MouseEvent, node: Node) => void;
+  onPaneClick?: () => void;
+  connectSourceId?: string | null;
+  fitViewTrigger?: number;
 }
 
 const defaultEdgeOptions = {
@@ -372,9 +403,25 @@ const defaultEdgeOptions = {
   },
 };
 
-const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesChange, onConnect, mode }) => {
+const Canvas: React.FC<CanvasProps> = ({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+  mode,
+  onNodeClick,
+  onPaneClick,
+  connectSourceId,
+  fitViewTrigger,
+}) => {
   const { fitView } = useReactFlow();
   useEffect(() => { setTimeout(() => fitView({ padding: 0.15 }), 50); }, []);
+  useEffect(() => {
+    if (fitViewTrigger) {
+      fitView({ padding: 0.15, duration: 250 });
+    }
+  }, [fitViewTrigger, fitView]);
 
   return (
     <ReactFlow
@@ -383,22 +430,30 @@ const Canvas: React.FC<CanvasProps> = ({ nodes, edges, onNodesChange, onEdgesCha
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onNodeClick={onNodeClick}
+      onPaneClick={onPaneClick}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
+      connectionMode={ConnectionMode.Loose}
       fitView
       fitViewOptions={{ padding: 0.15 }}
-      nodesDraggable={mode === 'edit'}
-      nodesConnectable={mode === 'edit'}
-      elementsSelectable={mode === 'edit'}
+      nodesDraggable={mode !== 'recall' && !connectSourceId}
+      nodesConnectable={mode !== 'recall'}
+      elementsSelectable={mode !== 'recall'}
       panOnDrag
-      zoomOnScroll
-      className="bg-stone-50 dark:bg-stone-900"
+      zoomOnPinch
+      preventScrolling
+      className="bg-stone-50 dark:bg-stone-900 touch-none select-none"
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="opacity-30" />
-      <Controls className="[&>button]:bg-white [&>button]:dark:bg-stone-800 [&>button]:border-stone-200 [&>button]:dark:border-stone-700" />
+      <Controls
+        position="bottom-left"
+        showInteractive={false}
+        className="[&>button]:bg-white [&>button]:dark:bg-stone-800 [&>button]:border-stone-200 [&>button]:dark:border-stone-700 !shadow-sm !rounded-lg"
+      />
       <MiniMap
-        className="!bg-stone-100 dark:!bg-stone-800 !border-stone-200 dark:!border-stone-700"
+        className="hidden sm:block !bg-stone-100 dark:!bg-stone-800 !border-stone-200 dark:!border-stone-700 !rounded-lg !shadow-sm"
         nodeColor={(n) =>
           n.type === 'input'
             ? '#6ee7b7'
@@ -441,6 +496,13 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const [diagramName, setDiagramName] = useState(diagram.name);
   const nextId = useRef(1000);
 
+  // ─── Mobile, Fullscreen & Tap-to-Connect State ───
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [fitViewTrigger, setFitViewTrigger] = useState(0);
+  const [showMobileMore, setShowMobileMore] = useState(false);
+
   // ─── Build / Reconstruction from Scratch State ───
   const [unlockedNodeIds, setUnlockedNodeIds] = useState<Set<string>>(new Set());
   const [buildInputText, setBuildInputText] = useState('');
@@ -458,6 +520,8 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
   const handleDeleteNode = useCallback((id: string) => {
     setNodes((prev) => prev.filter((n) => n.id !== id && n.parentId !== id));
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
+    if (selectedNodeId === id) setSelectedNodeId(null);
+    if (connectSourceId === id) setConnectSourceId(null);
     setRecallInputs((prev) => {
       const copy = { ...prev };
       delete copy[id];
@@ -468,7 +532,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
       delete copy[id];
       return copy;
     });
-  }, []);
+  }, [selectedNodeId, connectSourceId]);
 
   const handleDeleteEdge = useCallback((id: string) => {
     setEdges((prev) => prev.filter((e) => e.id !== id));
@@ -498,12 +562,19 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
 
   // Build nodes with callbacks injected into data
   const buildDisplayNodes = useCallback(
-    (baseNodes: Node[], currentMode: 'edit' | 'recall' | 'build', inputs: Record<string, string>, results: Record<string, 'correct' | 'incorrect' | null>): Node[] => {
+    (
+      baseNodes: Node[],
+      currentMode: 'edit' | 'recall' | 'build',
+      inputs: Record<string, string>,
+      results: Record<string, 'correct' | 'incorrect' | null>,
+      activeSourceId?: string | null
+    ): Node[] => {
       return baseNodes.map((n) => ({
         ...n,
         data: {
           ...n.data,
           mode: currentMode,
+          isConnectSource: n.id === activeSourceId,
           recallValue: inputs[n.id] ?? '',
           recallResult: results[n.id] ?? null,
           onLabelChange: (id: string, label: string) => {
@@ -517,6 +588,94 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     },
     [handleDeleteNode, handleRecallInputUpdate]
   );
+
+  // Sync connectSource glow highlight onto active nodes
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          isConnectSource: n.id === connectSourceId,
+        },
+      }))
+    );
+  }, [connectSourceId]);
+
+  // Connect helper for Tap-to-Connect on touch screens
+  const createConnection = useCallback(
+    (sourceId: string, targetId: string) => {
+      if (!sourceId || !targetId || sourceId === targetId) {
+        setConnectSourceId(null);
+        return;
+      }
+      const alreadyConnected = edges.some(
+        (e) => (e.source === sourceId && e.target === targetId) || (e.source === targetId && e.target === sourceId)
+      );
+      if (alreadyConnected) {
+        setConnectSourceId(null);
+        return;
+      }
+      const edgeId = `e${sourceId}-${targetId}-${Date.now()}`;
+      setEdges((eds) =>
+        addEdge(
+          {
+            id: edgeId,
+            source: sourceId,
+            target: targetId,
+            label: '',
+            animated: false,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 16,
+              height: 16,
+              color: '#78716c',
+            },
+            style: {
+              strokeWidth: 2,
+              stroke: '#78716c',
+            },
+            data: {
+              mode,
+              onLabelChange: handleEdgeLabelChange,
+              onDeleteEdge: handleDeleteEdge,
+            },
+          },
+          eds
+        )
+      );
+      setConnectSourceId(null);
+    },
+    [edges, mode, handleEdgeLabelChange, handleDeleteEdge]
+  );
+
+  const handleNodeClick = useCallback(
+    (_: React.MouseEvent, clickedNode: Node) => {
+      if (mode === 'recall') return;
+
+      if (connectSourceId) {
+        if (connectSourceId === '__pending__') {
+          setConnectSourceId(clickedNode.id);
+        } else if (connectSourceId !== clickedNode.id) {
+          createConnection(connectSourceId, clickedNode.id);
+        } else {
+          setConnectSourceId(null);
+        }
+        return;
+      }
+
+      setSelectedNodeId(clickedNode.id);
+    },
+    [mode, connectSourceId, createConnection]
+  );
+
+  const handlePaneClick = useCallback(() => {
+    if (connectSourceId) {
+      setConnectSourceId(null);
+    }
+    setSelectedNodeId(null);
+    setShowMobileMore(false);
+  }, [connectSourceId]);
 
   // Build edges with callbacks injected into data
   const buildDisplayEdges = useCallback(
@@ -551,7 +710,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     });
     originalLabelsRef.current = labelMap;
 
-    setNodes(buildDisplayNodes(baseNodes, mode, recallInputs, recallResults));
+    setNodes(buildDisplayNodes(baseNodes, mode, recallInputs, recallResults, connectSourceId));
     setEdges(buildDisplayEdges(baseEdges, mode));
   }, [diagram]);
 
@@ -561,7 +720,7 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
       const baseNodes = parseNodes(diagram.nodes_json);
       // Filter only unlocked nodes
       const visibleNodes = baseNodes.filter((n) => unlockedNodeIds.has(n.id));
-      setNodes(buildDisplayNodes(visibleNodes, 'edit', {}, {}));
+      setNodes(buildDisplayNodes(visibleNodes, 'build', {}, {}, connectSourceId));
       return;
     }
 
@@ -838,14 +997,22 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
     ? Object.values(recallResults).filter((v) => v === 'correct').length
     : 0;
 
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className={`flex flex-col bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 ${
+        isFullscreen ? 'fixed inset-0 z-50 w-screen h-screen' : 'h-full'
+      }`}
+    >
       {/* Editor toolbar */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 shrink-0 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-1.5 px-2.5 sm:px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50/95 dark:bg-stone-900/90 shrink-0">
+        {/* Left: Back / Close & Title */}
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
           <button
-            onClick={onClose}
-            className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+            onClick={isFullscreen ? () => setIsFullscreen(false) : onClose}
+            className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors shrink-0"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Back to Diagrams'}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -853,75 +1020,177 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
             type="text"
             value={diagramName}
             onChange={(e) => setDiagramName(e.target.value)}
-            className="text-sm font-semibold bg-transparent outline-none text-stone-900 dark:text-stone-100 border-b border-transparent hover:border-stone-300 dark:hover:border-stone-600 focus:border-stone-400 dark:focus:border-stone-500 transition-colors px-0.5"
+            className="text-xs sm:text-sm font-semibold bg-transparent outline-none text-stone-900 dark:text-stone-100 border-b border-transparent hover:border-stone-300 dark:hover:border-stone-600 focus:border-stone-400 dark:focus:border-stone-500 transition-colors px-0.5 truncate max-w-[110px] sm:max-w-[200px]"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {mode === 'edit' ? (
-            <>
+        {/* Center / Right: Mode Switcher & Actions */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Segmented Mode Selector */}
+          <div className="flex p-0.5 rounded-lg bg-stone-200/80 dark:bg-stone-800 text-xs font-medium shrink-0">
+            <button
+              onClick={() => {
+                if (mode === 'build') {
+                  const baseNodes = parseNodes(diagram.nodes_json);
+                  const baseEdges = parseEdges(diagram.edges_json);
+                  setNodes(buildDisplayNodes(baseNodes, 'edit', {}, {}));
+                  setEdges(buildDisplayEdges(baseEdges, 'edit'));
+                }
+                setMode('edit');
+                setRecallInputs({});
+                setRecallResults({});
+                setRecallChecked(false);
+                setConnectSourceId(null);
+              }}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                mode === 'edit'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-2xs font-semibold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+              title="Edit diagram blocks, labels and arrows"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Edit</span>
+            </button>
+            <button
+              onClick={enterRecall}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                mode === 'recall'
+                  ? 'bg-white dark:bg-stone-900 text-violet-700 dark:text-violet-300 shadow-2xs font-semibold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+              title="Quiz yourself by typing labels into blank blocks"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Fill</span>
+            </button>
+            <button
+              onClick={enterBuildMode}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                mode === 'build'
+                  ? 'bg-white dark:bg-stone-900 text-amber-700 dark:text-amber-300 shadow-2xs font-semibold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              }`}
+              title="Start with a blank canvas and reconstruct the diagram"
+            >
+              <Hammer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Build</span>
+            </button>
+          </div>
+
+          {/* Mode-Specific Action Buttons */}
+          {mode === 'edit' && (
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => addNode('default')}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                title="Add a regular diagram block"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors shrink-0"
+                title="Add a block"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Block
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Block</span>
               </button>
+
               <button
-                onClick={() => addNode('group')}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 transition-colors"
-                title="Add an outer container box that can hold nested blocks"
+                onClick={() => setConnectSourceId((prev) => (prev ? null : selectedNodeId || '__pending__'))}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded text-xs font-medium transition-colors shrink-0 ${
+                  connectSourceId
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800'
+                }`}
+                title="Tap-to-Connect: tap source box, then tap destination box to create arrow"
               >
-                <BoxSelect className="w-3.5 h-3.5" /> Add Outer Container
+                <Link2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Connect</span>
               </button>
-              {nodes.some((n) => n.type === 'group') && (
+
+              {/* Desktop Container Buttons */}
+              <div className="hidden lg:flex items-center gap-1">
                 <button
-                  onClick={() => {
-                    const firstGroup = nodes.find((n) => n.type === 'group');
-                    if (firstGroup) addNestedNode(firstGroup.id);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 hover:bg-purple-200 transition-colors"
-                  title="Add a block directly inside the container box"
+                  onClick={() => addNode('group')}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 transition-colors"
+                  title="Add an outer container box"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Nest Inside Box
+                  <BoxSelect className="w-3.5 h-3.5" />
+                  <span>Container</span>
                 </button>
-              )}
-              <button
-                onClick={enterRecall}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-800/60 border border-violet-200 dark:border-violet-700 transition-colors"
-                title="Quiz yourself by typing the labels into blanked boxes"
-              >
-                <Eye className="w-3.5 h-3.5" /> Fill Labels
-              </button>
-              <button
-                onClick={enterBuildMode}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700 transition-colors"
-                title="Start with a blank canvas: type box names to reveal them, then connect arrows"
-              >
-                <Hammer className="w-3.5 h-3.5" /> Build from Scratch
-              </button>
+                {nodes.some((n) => n.type === 'group') && (
+                  <button
+                    onClick={() => {
+                      const firstGroup = nodes.find((n) => n.type === 'group');
+                      if (firstGroup) addNestedNode(firstGroup.id);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 hover:bg-purple-200 transition-colors"
+                    title="Nest a block inside container"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Nest Box</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile More Popover for Containers */}
+              <div className="relative lg:hidden">
+                <button
+                  onClick={() => setShowMobileMore((prev) => !prev)}
+                  className="p-1.5 rounded text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  title="More actions"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {showMobileMore && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-xl py-1 z-40 text-xs">
+                    <button
+                      onClick={() => {
+                        addNode('group');
+                        setShowMobileMore(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center gap-2 text-stone-700 dark:text-stone-200"
+                    >
+                      <BoxSelect className="w-3.5 h-3.5 text-purple-600" />
+                      <span>+ Outer Container</span>
+                    </button>
+                    {nodes.some((n) => n.type === 'group') && (
+                      <button
+                        onClick={() => {
+                          const firstGroup = nodes.find((n) => n.type === 'group');
+                          if (firstGroup) addNestedNode(firstGroup.id);
+                          setShowMobileMore(false);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center gap-2 text-stone-700 dark:text-stone-200"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-purple-600" />
+                        <span>+ Nest Box in Container</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-700 dark:hover:bg-white transition-colors disabled:opacity-50 shrink-0"
               >
                 <Save className="w-3.5 h-3.5" />
-                {saveMsg ?? (isSaving ? 'Saving…' : 'Save')}
+                <span className="hidden sm:inline">{saveMsg ?? (isSaving ? 'Saving…' : 'Save')}</span>
               </button>
-            </>
-          ) : mode === 'recall' ? (
-            <>
+            </div>
+          )}
+
+          {mode === 'recall' && (
+            <div className="flex items-center gap-1 sm:gap-1.5">
               {recallChecked && (
-                <span className="text-xs font-mono font-semibold text-stone-600 dark:text-stone-300 px-2">
-                  {correctCount}/{nodes.length} correct
+                <span className="text-xs font-mono font-semibold text-stone-600 dark:text-stone-300 px-1 sm:px-2">
+                  {correctCount}/{nodes.length}
                 </span>
               )}
               {!recallChecked ? (
                 <button
                   onClick={checkRecall}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-violet-600 dark:bg-violet-700 text-white hover:bg-violet-700 dark:hover:bg-violet-600 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-violet-600 dark:bg-violet-700 text-white hover:bg-violet-700 transition-colors shrink-0"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Check Answers
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Check</span>
                 </button>
               ) : (
                 <button
@@ -930,97 +1199,110 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
                     setRecallResults({});
                     setRecallChecked(false);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors shrink-0"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" /> Try Again
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Try Again</span>
                 </button>
               )}
-              <button
-                onClick={() => { setMode('edit'); setRecallInputs({}); setRecallResults({}); setRecallChecked(false); }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
-              >
-                <Edit3 className="w-3.5 h-3.5" /> Edit Mode
-              </button>
-            </>
-          ) : (
-            // Build Mode toolbar
-            <>
+            </div>
+          )}
+
+          {mode === 'build' && (
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleEvaluateBuild}
-                className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs shrink-0"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" /> Check Connections
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Check</span>
+              </button>
+              <button
+                onClick={() => setConnectSourceId((prev) => (prev ? null : selectedNodeId || '__pending__'))}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded text-xs font-medium transition-colors shrink-0 ${
+                  connectSourceId
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800'
+                }`}
+                title="Tap-to-Connect arrows between revealed blocks"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Connect</span>
               </button>
               <button
                 onClick={enterBuildMode}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
+                className="p-1.5 rounded text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors shrink-0"
+                title="Restart"
               >
-                <RotateCcw className="w-3.5 h-3.5" /> Restart
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => {
-                  const baseNodes = parseNodes(diagram.nodes_json);
-                  const baseEdges = parseEdges(diagram.edges_json);
-                  setNodes(buildDisplayNodes(baseNodes, 'edit', {}, {}));
-                  setEdges(buildDisplayEdges(baseEdges, 'edit'));
-                  setMode('edit');
-                }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
-              >
-                <Edit3 className="w-3.5 h-3.5" /> Exit to Edit
-              </button>
-            </>
+            </div>
           )}
+
+          {/* Recenter / Fit View Button */}
+          <button
+            onClick={() => setFitViewTrigger((c) => c + 1)}
+            className="p-1.5 rounded text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors shrink-0"
+            title="Recenter & Fit Diagram"
+          >
+            <Focus className="w-4 h-4" />
+          </button>
+
+          {/* Fullscreen Toggle Button */}
+          <button
+            onClick={() => setIsFullscreen((prev) => !prev)}
+            className="p-1.5 rounded text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors shrink-0"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen / Maximize View'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
       {/* Mode banners */}
       {mode === 'recall' && (
-        <div className="px-4 py-2 bg-violet-50 dark:bg-violet-950/40 border-b border-violet-100 dark:border-violet-800 text-xs text-violet-700 dark:text-violet-300 flex items-center gap-2 shrink-0">
-          <Eye className="w-3.5 h-3.5" />
-          <strong>Fill Labels Mode:</strong> Type the name of each block from memory, then click "Check Answers".
+        <div className="px-3 sm:px-4 py-1.5 bg-violet-50 dark:bg-violet-950/40 border-b border-violet-100 dark:border-violet-800 text-[11px] sm:text-xs text-violet-700 dark:text-violet-300 flex items-center gap-2 shrink-0">
+          <Eye className="w-3.5 h-3.5 shrink-0" />
+          <span><strong>Fill Labels Mode:</strong> Type the name of each block from memory, then click "Check".</span>
         </div>
       )}
 
       {mode === 'build' && (
-        <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-xs shrink-0 space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Hammer className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div>
-                <strong className="text-amber-900 dark:text-amber-200">Build from Scratch Mode:</strong>{' '}
-                <span className="text-stone-600 dark:text-stone-400">
-                  Type each container or box name to reveal it onto the canvas. Once all boxes are revealed, draw arrows connecting them!
-                </span>
-              </div>
+        <div className="px-3 sm:px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-xs shrink-0 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Hammer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold text-amber-900 dark:text-amber-200 truncate text-[11px] sm:text-xs">
+                Build from Scratch: Type box name to reveal it
+              </span>
             </div>
             <div className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0">
-              {unlockedNodeIds.size} / {parseNodes(diagram.nodes_json).length} boxes revealed
+              {unlockedNodeIds.size} / {parseNodes(diagram.nodes_json).length}
             </div>
           </div>
 
           {/* Text Input to spawn boxes */}
-          <form onSubmit={handleBuildTypeSubmit} className="flex items-center gap-2 max-w-xl">
+          <form onSubmit={handleBuildTypeSubmit} className="flex items-center gap-1.5">
             <input
               type="text"
               value={buildInputText}
               onChange={(e) => setBuildInputText(e.target.value)}
-              placeholder="Type box name (e.g. HDFS, Parser, Apache Pig, Hadoop)..."
-              className="flex-1 px-3 py-1.5 text-xs rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+              placeholder="Type box name (e.g. HDFS, Parser, Hadoop)..."
+              className="flex-1 px-2.5 py-1.5 text-sm sm:text-xs rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 placeholder-stone-400 outline-none focus:ring-1 focus:ring-amber-500 font-medium"
             />
             <button
               type="submit"
               disabled={!buildInputText.trim()}
               className="px-3 py-1.5 text-xs font-semibold rounded bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 transition-colors shrink-0"
             >
-              Reveal Box
+              Reveal
             </button>
           </form>
 
           {/* Feedback messages */}
           {buildFeedbackMsg && (
             <div
-              className={`text-xs font-medium flex items-center gap-1.5 ${
+              className={`text-[11px] font-medium flex items-center gap-1.5 ${
                 buildFeedbackMsg.type === 'success'
                   ? 'text-emerald-700 dark:text-emerald-300'
                   : buildFeedbackMsg.type === 'info'
@@ -1029,37 +1311,32 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
               }`}
             >
               {buildFeedbackMsg.type === 'success' ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               ) : (
-                <AlertCircle className="w-3.5 h-3.5" />
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               )}
-              {buildFeedbackMsg.text}
+              <span className="truncate">{buildFeedbackMsg.text}</span>
             </div>
           )}
 
           {/* Evaluation Results Banner */}
           {buildEvalResult?.evaluated && (
-            <div className="p-2.5 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs space-y-1">
-              <div className="font-semibold flex items-center gap-1.5 text-stone-900 dark:text-stone-100">
+            <div className="p-2 rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs space-y-1 max-h-32 overflow-y-auto">
+              <div className="font-semibold flex items-center gap-1.5 text-stone-900 dark:text-stone-100 text-[11px] sm:text-xs">
                 {buildEvalResult.correctCount === buildEvalResult.totalExpected ? (
                   <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-4 h-4" /> Perfect! All {buildEvalResult.totalExpected} relationships are correctly connected!
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Perfect! All {buildEvalResult.totalExpected} relationships correctly connected!
                   </span>
                 ) : (
                   <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {buildEvalResult.correctCount} of {buildEvalResult.totalExpected} connections correct.
                   </span>
                 )}
               </div>
               {buildEvalResult.missingConnections.length > 0 && (
-                <div className="text-rose-600 dark:text-rose-400 text-[11px] pt-1">
-                  <strong>Missing or incomplete connections:</strong>
-                  <ul className="list-disc list-inside mt-0.5 space-y-0.5">
-                    {buildEvalResult.missingConnections.map((m, idx) => (
-                      <li key={idx}>{m}</li>
-                    ))}
-                  </ul>
+                <div className="text-rose-600 dark:text-rose-400 text-[10px] sm:text-[11px]">
+                  <strong>Missing:</strong> {buildEvalResult.missingConnections.join('; ')}
                 </div>
               )}
             </div>
@@ -1067,8 +1344,8 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
         </div>
       )}
 
-      {/* Canvas */}
-      <div className="flex-1 min-h-0">
+      {/* Canvas Viewport */}
+      <div className="flex-1 min-h-0 relative">
         <ReactFlowProvider>
           <Canvas
             nodes={nodes}
@@ -1077,18 +1354,76 @@ const DiagramEditor: React.FC<EditorProps> = ({ diagram, topicId, onSaved, onClo
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             mode={mode}
+            onNodeClick={handleNodeClick}
+            onPaneClick={handlePaneClick}
+            connectSourceId={connectSourceId}
+            fitViewTrigger={fitViewTrigger}
           />
         </ReactFlowProvider>
+
+        {/* Floating Tap-to-Connect Status Banner */}
+        {connectSourceId && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 rounded-full bg-blue-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2 max-w-[94vw] border border-blue-400/40">
+            <Link2 className="w-4 h-4 shrink-0 animate-pulse" />
+            <span className="truncate">
+              {connectSourceId === '__pending__'
+                ? 'Tap any block to start arrow'
+                : `From: ${((nodes.find((n) => n.id === connectSourceId)?.data as any)?.label as string) || 'block'} → Tap target`}
+            </span>
+            <button
+              onClick={() => setConnectSourceId(null)}
+              className="ml-1 p-0.5 rounded-full hover:bg-blue-700 text-blue-200 hover:text-white shrink-0"
+              title="Cancel connection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Floating Quick Action Card for Selected Node (Mobile & Desktop) */}
+        {selectedNode && !connectSourceId && mode !== 'recall' && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-full bg-white/95 dark:bg-stone-800/95 border border-stone-200 dark:border-stone-700 shadow-xl flex items-center gap-2 max-w-[92vw] text-xs backdrop-blur-xs">
+            <span className="font-semibold text-stone-900 dark:text-stone-100 truncate max-w-[110px] pl-1">
+              {((selectedNode.data as any)?.label as string) || (selectedNode.type === 'group' ? 'Container' : 'Block')}
+            </span>
+            <div className="h-3.5 w-px bg-stone-200 dark:bg-stone-700 shrink-0" />
+            <button
+              onClick={() => setConnectSourceId(selectedNode.id)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors shrink-0 font-medium"
+              title="Start drawing arrow from this block"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>Connect</span>
+            </button>
+            <button
+              onClick={() => {
+                handleDeleteNode(selectedNode.id);
+                setSelectedNodeId(null);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 transition-colors shrink-0 font-medium"
+              title="Delete this block"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+            <button
+              onClick={() => setSelectedNodeId(null)}
+              className="p-1 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 shrink-0"
+              title="Deselect"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Edit mode hint */}
+      {/* Edit mode hint (desktop only to preserve mobile screen real estate) */}
       {mode === 'edit' && (
-        <div className="px-4 py-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-400 dark:text-stone-500 shrink-0 flex items-center gap-3 flex-wrap">
-          <span>• <strong>Add arrow:</strong> Drag from any block dot to another</span>
-          <span>• <strong>Arrow label / delete:</strong> Type in the arrow box or click ✕ on it</span>
-          <span>• <strong>Delete block:</strong> Select any box and click the red ✕</span>
-          <span>• <strong>Reshape / resize:</strong> Select any box and drag corner handles</span>
-          <span>• <strong>Boxes in boxes:</strong> Click <em>Add Outer Container</em>, then <em>Nest Inside Box</em></span>
+        <div className="hidden sm:flex px-4 py-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-400 dark:text-stone-500 shrink-0 items-center gap-3 flex-wrap">
+          <span>• <strong>Add arrow:</strong> Drag from any dot OR click <em>Connect</em> and tap 2 blocks</span>
+          <span>• <strong>Arrow label / delete:</strong> Type in arrow tag or click ✕</span>
+          <span>• <strong>Delete block:</strong> Select any box and click ✕ or Delete</span>
+          <span>• <strong>Boxes in boxes:</strong> Click <em>Container</em>, then <em>Nest Box</em></span>
         </div>
       )}
     </div>
