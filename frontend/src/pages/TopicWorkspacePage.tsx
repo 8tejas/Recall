@@ -5,6 +5,7 @@ import {
   Brain,
   FileQuestion,
   HelpCircle,
+  MessageSquareQuote,
   Award,
   Sparkles,
   ArrowLeft,
@@ -30,9 +31,10 @@ import { ListSequenceView } from '../components/memorization/ListSequenceView';
 import { WrittenPracticeView } from '../components/practice/WrittenPracticeView';
 import { TopicAssessmentView } from '../components/workspace/TopicAssessmentView';
 import { MCQAssessmentView } from '../components/workspace/MCQAssessmentView';
+import { TopicQAView } from '../components/workspace/TopicQAView';
 import { SelectiveGeneratorModal } from '../components/workspace/SelectiveGeneratorModal';
 
-type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment' | 'mcq';
+type WorkspaceTab = 'notes' | 'memorize' | 'conceptual' | 'practice' | 'assessment' | 'mcq' | 'qa';
 
 export const TopicWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +48,7 @@ export const TopicWorkspacePage: React.FC = () => {
     if (location.pathname.endsWith('/practice')) return 'practice';
     if (location.pathname.endsWith('/assessment')) return 'assessment';
     if (location.pathname.endsWith('/mcq')) return 'mcq';
+    if (location.pathname.endsWith('/qa')) return 'qa';
     return 'notes';
   };
 
@@ -93,6 +96,7 @@ export const TopicWorkspacePage: React.FC = () => {
     else if (tab === 'practice') navigate(`/topics/${id}/practice`);
     else if (tab === 'assessment') navigate(`/topics/${id}/assessment`);
     else if (tab === 'mcq') navigate(`/topics/${id}/mcq`);
+    else if (tab === 'qa') navigate(`/topics/${id}/qa`);
     else navigate(`/topics/${id}`);
   };
 
@@ -271,6 +275,18 @@ export const TopicWorkspacePage: React.FC = () => {
           <HelpCircle className="w-3.5 h-3.5" />
           <span>F. MCQ Assessment</span>
         </button>
+
+        <button
+          onClick={() => handleTabChange('qa')}
+          className={`py-3 px-3 text-xs font-medium border-b-2 flex items-center space-x-1.5 whitespace-nowrap transition-colors ${
+            activeTab === 'qa'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100 font-semibold'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <MessageSquareQuote className="w-3.5 h-3.5" />
+          <span>G. Academic Q&A</span>
+        </button>
       </div>
 
       {/* Main Tab Viewport */}
@@ -421,6 +437,14 @@ export const TopicWorkspacePage: React.FC = () => {
             topicId={topicDetail.id}
             topicTitle={topicDetail.title}
             onMasteryChange={loadAllTopicData}
+          />
+        )}
+
+        {/* Tab G: Academic Q&A */}
+        {activeTab === 'qa' && (
+          <TopicQAView
+            topicId={topicDetail.id}
+            topicTitle={topicDetail.title}
           />
         )}
       </div>

@@ -25,6 +25,7 @@ export const App: React.FC = () => {
           <Route path="/topics/:id/practice" element={<TopicWorkspacePage />} />
           <Route path="/topics/:id/assessment" element={<TopicWorkspacePage />} />
           <Route path="/topics/:id/mcq" element={<TopicWorkspacePage />} />
+          <Route path="/topics/:id/qa" element={<TopicWorkspacePage />} />
 
           <Route path="/revision" element={<RevisionPage />} />
           <Route path="/settings" element={<SettingsPage />} />

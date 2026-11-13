@@ -12,6 +12,7 @@ import {
   ParsedSyllabus,
   MCQQuestion,
   MCQAssessmentResult,
+  TopicQA,
 } from '../types';
 
 const apiBase = import.meta.env.VITE_API_BASE_URL
@@ -211,3 +212,19 @@ export const fetchLatestMCQAssessment = async (topicId: string): Promise<MCQAsse
   const res = await api.get(`/topics/${topicId}/mcqs/latest-assessment`);
   return res.data;
 };
+
+// ----------------- Topic Academic Q&A -----------------
+export const fetchTopicQAs = async (topicId: string): Promise<TopicQA[]> => {
+  const res = await api.get(`/topics/${topicId}/qa`);
+  return res.data;
+};
+
+export const askTopicQuestion = async (topicId: string, question: string): Promise<TopicQA> => {
+  const res = await api.post(`/topics/${topicId}/qa`, { question });
+  return res.data;
+};
+
+export const deleteTopicQA = async (topicId: string, qaId: string): Promise<void> => {
+  await api.delete(`/topics/${topicId}/qa/${qaId}`);
+};
+

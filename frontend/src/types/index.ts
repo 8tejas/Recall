@@ -228,3 +228,12 @@ export interface MCQAssessmentResult {
   detailed_feedback: MCQQuestionFeedback[];
   created_at: string;
 }
+
+export interface TopicQA {
+  id: string;
+  topic_id: string;
+  user_id: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}

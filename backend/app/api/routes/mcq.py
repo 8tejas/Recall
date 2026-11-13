@@ -79,13 +79,18 @@ async def generate_topic_mcqs(
     )
     source_text = material.markdown_text if material else ""
 
+    # Retrieve any existing questions so we can generate distinct new items
+    existing_mcqs = db.query(MCQQuestion).filter(MCQQuestion.topic_id == topic_id).all()
+    existing_question_texts = [q.question_text for q in existing_mcqs]
+
     ai_provider = get_ai_provider()
     raw_mcqs = await ai_provider.generate_mcqs(
         topic_title=topic.title,
         unit_context=unit.title,
         subject_context=subject.name,
         source_text=source_text,
-        num_questions=req.num_questions or 5
+        num_questions=req.num_questions or 5,
+        existing_questions=existing_question_texts,
     )
 
     created_questions = []

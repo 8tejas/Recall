@@ -27,6 +27,7 @@ class User(Base):
     review_schedules = relationship("ReviewSchedule", back_populates="user", cascade="all, delete-orphan")
     assessment_results = relationship("AssessmentResult", back_populates="user", cascade="all, delete-orphan")
     mcq_assessments = relationship("MCQAssessmentResult", back_populates="user", cascade="all, delete-orphan")
+    topic_qas = relationship("TopicQA", back_populates="user", cascade="all, delete-orphan")
 
 
 class Subject(Base):
@@ -78,6 +79,7 @@ class Topic(Base):
     questions = relationship("Question", back_populates="topic", cascade="all, delete-orphan")
     mcq_questions = relationship("MCQQuestion", back_populates="topic", cascade="all, delete-orphan")
     mcq_assessments = relationship("MCQAssessmentResult", back_populates="topic", cascade="all, delete-orphan")
+    qas = relationship("TopicQA", back_populates="topic", cascade="all, delete-orphan", order_by="TopicQA.created_at.asc()")
 
 
 class LearningMaterial(Base):
@@ -235,3 +237,18 @@ class MCQAssessmentResult(Base):
 
     topic = relationship("Topic", back_populates="mcq_assessments")
     user = relationship("User", back_populates="mcq_assessments")
+
+
+class TopicQA(Base):
+    __tablename__ = "topic_qas"
+
+    id = Column(String(36), primary_key=True, default=gen_uuid)
+    topic_id = Column(String(36), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+
+    topic = relationship("Topic", back_populates="qas")
+    user = relationship("User", back_populates="topic_qas")
+

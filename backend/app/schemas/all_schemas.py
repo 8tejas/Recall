@@ -403,3 +403,20 @@ class MCQAssessmentResultOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TopicQAAskRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=5000)
+
+
+class TopicQAOut(BaseModel):
+    id: str
+    topic_id: str
+    user_id: str
+    question: str
+    answer: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

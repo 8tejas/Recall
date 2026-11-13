@@ -20,6 +20,7 @@ from backend.app.prompts.academic_prompts import (
     EXAM_QUESTIONS_SYSTEM_PROMPT,
     ANSWER_EVALUATION_SYSTEM_PROMPT,
     MCQ_ASSESSMENT_SYSTEM_PROMPT,
+    TOPIC_QA_SYSTEM_PROMPT,
 )
 from backend.app.services.memorization_engine import MemorizationEngine
 
@@ -81,8 +82,22 @@ class AIProviderInterface(ABC):
         subject_context: str,
         source_text: Optional[str] = None,
         num_questions: int = 5,
+        existing_questions: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Generate university-level diagnostic MCQs with 4 options and detailed explanations."""
+        pass
+
+    @abstractmethod
+    async def answer_topic_question(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        question: str,
+        source_text: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        """Answer a student question regarding a syllabus topic with academic rigor."""
         pass
 
 
@@ -526,6 +541,7 @@ class AcademicFallbackProvider(AIProviderInterface):
         subject_context: str,
         source_text: Optional[str] = None,
         num_questions: int = 5,
+        existing_questions: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Deterministic, university-level multiple choice questions with 4 options
@@ -669,9 +685,179 @@ class AcademicFallbackProvider(AIProviderInterface):
                     f"and rigorous theoretical justifications of {topic_title}."
                 ),
                 "difficulty": "medium"
+            },
+            {
+                "question": f"In an adversarial scenario, which security or integrity vulnerability is most pertinent to '{topic_title}'?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Malformed input ingestion leading to state corruption or bypass of boundary invariants."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Physical chassis temperature variation below standard laboratory conditions."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Total absence of binary compilation logs on volatile scratch memory."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Superficial visual distortion of UI widgets in low-resolution displays."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: The primary integrity threat to {topic_title} involves boundary violations or input malformation "
+                    f"compromising internal state validity."
+                ),
+                "difficulty": "hard"
+            },
+            {
+                "question": f"What algorithmic time or space complexity constraint typically characterizes standard implementations of '{topic_title}'?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Unbounded non-deterministic exponential complexity under all input distributions."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Deterministic polynomial or logarithmic complexity guaranteed by structured traversal."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Zero spatial complexity regardless of persistent state size."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Strict random walk execution without asymptotic bounds."
+                    }
+                ],
+                "correct_option_id": "B",
+                "explanation": (
+                    f"Option B is correct: Standard university implementations of {topic_title} enforce deterministic bounds "
+                    f"to ensure reproducible performance under defined constraints."
+                ),
+                "difficulty": "hard"
+            },
+            {
+                "question": f"How does '{topic_title}' typically handle fault tolerance and recovery following an abrupt subsystem termination?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Through write-ahead logging, idempotent replay, or rollback to the last verified checkpoint."
+                    },
+                    {
+                        "id": "B",
+                        "text": "By discarding all previous persistent data and re-initializing empty parameters."
+                    },
+                    {
+                        "id": "C",
+                        "text": "By executing uncontrolled retries in an infinite blocking loop."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Fault recovery is fundamentally impossible within this architectural paradigm."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: Robust systems implementing {topic_title} employ checkpointing or idempotent replay "
+                    f"to guarantee state restoration without catastrophic data loss."
+                ),
+                "difficulty": "medium"
+            },
+            {
+                "question": f"Which trade-off is unavoidable when optimizing '{topic_title}' for maximum throughput rather than minimal latency?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": "Increased batching and queuing delays for individual items in exchange for higher aggregate processing volume."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Complete loss of mathematical determinism and violation of all type constraints."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Mandatory migration to an unsupported hardware instruction set."
+                    },
+                    {
+                        "id": "D",
+                        "text": "There is no theoretical trade-off between throughput and latency in distributed systems."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: In academic systems architecture, maximizing throughput typically requires grouping operations into batches, "
+                    f"which inherently increases per-item latency."
+                ),
+                "difficulty": "medium"
+            },
+            {
+                "question": f"From a curriculum benchmarking perspective, what prerequisite knowledge is most vital prior to studying '{topic_title}'?",
+                "options": [
+                    {
+                        "id": "A",
+                        "text": f"Foundational data models, basic asymptotic notation, and discrete logic in {context_label}."
+                    },
+                    {
+                        "id": "B",
+                        "text": "Advanced enterprise UI design patterns and graphic asset creation."
+                    },
+                    {
+                        "id": "C",
+                        "text": "Commercial licensing law and trademark registration procedures."
+                    },
+                    {
+                        "id": "D",
+                        "text": "Analog audio signal filtering and broadcast modulation."
+                    }
+                ],
+                "correct_option_id": "A",
+                "explanation": (
+                    f"Option A is correct: Mastery of {topic_title} requires strong foundational understanding of underlying data models "
+                    f"and discrete structural mechanisms within {context_label}."
+                ),
+                "difficulty": "easy"
             }
         ]
+        
+        # If existing questions exist, offset into the bank to provide fresh items
+        offset = len(existing_questions) if existing_questions else 0
+        if offset < len(all_mcqs):
+            selected = all_mcqs[offset:offset + num_questions]
+            if len(selected) < num_questions:
+                # Wrap around if bank exceeded
+                selected += all_mcqs[:num_questions - len(selected)]
+            return selected
         return all_mcqs[:num_questions]
+
+    async def answer_topic_question(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        question: str,
+        source_text: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        """Academic fallback response providing structured, rigorous answers."""
+        return (
+            f"### Academic Analysis: {topic_title}\n\n"
+            f"Regarding your inquiry: **\"{question}\"**\n\n"
+            f"#### 1. Theoretical Foundation\n"
+            f"Within **{subject_context or 'this discipline'}** (specifically under **{unit_context or 'this unit'}**), "
+            f"**{topic_title}** operates under rigorous conceptual constraints that govern its behavior and state transitions. "
+            f"When analyzing this topic in academic examinations, examiners evaluate both the underlying governing axioms and the operational boundaries.\n\n"
+            f"#### 2. Key Operational Mechanisms\n"
+            f"- **Core Invariant**: Guarantees systematic progression from input parameters to verified output states without information loss.\n"
+            f"- **Error Handling & Constraints**: Enforces boundary verification and parameter sanity checks to prevent degenerate or unverified states.\n"
+            f"- **Algorithmic Coupling**: Interfaces with adjacent syllabus modules through well-defined protocol contracts.\n\n"
+            f"#### 3. Examination Relevance & Key Takeaway\n"
+            f"For 5-mark and 10-mark examination questions on this topic, frame your response with precise terminology, "
+            f"cite the governing invariant, and illustrate with a clean block architecture diagram."
+        )
 
 
 class GroqProvider(AIProviderInterface):
@@ -732,6 +918,41 @@ class GroqProvider(AIProviderInterface):
                 await asyncio.sleep(backoff)
 
         raise RuntimeError("Groq API failed after max retries")
+
+    async def _call_groq_text(self, messages: List[Dict[str, str]], model_override: Optional[str] = None) -> str:
+        model = model_override or self.primary_model
+        max_retries = 3
+        backoff = 1.5
+
+        for attempt in range(max_retries):
+            try:
+                response = await self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.3,
+                    timeout=45.0,
+                )
+                return response.choices[0].message.content or ""
+            except RateLimitError as e:
+                logger.warning(f"Groq Rate limit encountered in text call (attempt {attempt + 1}/{max_retries}): {e}")
+                if model != self.light_model:
+                    model = self.light_model
+                await asyncio.sleep(backoff)
+                backoff *= 2
+            except APIError as e:
+                logger.error(f"Groq API Error in text call: {e}")
+                if attempt == max_retries - 1:
+                    raise
+                if model != self.light_model:
+                    model = self.light_model
+                await asyncio.sleep(backoff)
+            except Exception as e:
+                logger.error(f"Unexpected error in Groq text call: {e}")
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(backoff)
+
+        raise RuntimeError("Groq API text call failed after max retries")
 
     async def parse_syllabus(self, raw_syllabus: str) -> Dict[str, Any]:
         prompt = (
@@ -884,10 +1105,21 @@ class GroqProvider(AIProviderInterface):
         subject_context: str,
         source_text: Optional[str] = None,
         num_questions: int = 5,
+        existing_questions: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
+        existing_str = ""
+        if existing_questions and len(existing_questions) > 0:
+            existing_list = "\n".join(f"- {q}" for q in existing_questions[:15])
+            existing_str = (
+                f"\nIMPORTANT - EXISTING QUESTIONS IN DATABASE (DO NOT duplicate or ask about the exact same facts):\n"
+                f"{existing_list}\n"
+                f"You MUST generate {num_questions} completely NEW, FRESH, and DIFFERENT questions covering deeper mechanisms, edge cases, formulas, or alternative aspects of '{topic_title}'.\n\n"
+            )
+
         prompt = (
             f"Generate {num_questions} university-examination Multiple Choice Questions (MCQs) for the topic '{topic_title}' "
             f"under unit '{unit_context or 'this unit'}' in course '{subject_context or 'Academic Course'}'.\n"
+            f"{existing_str}"
             f"Reference context:\n{(source_text or '')[:2000]}\n\n"
             f"Guidelines:\n"
             f"- 4 plausible options labeled A, B, C, D.\n"
@@ -904,10 +1136,55 @@ class GroqProvider(AIProviderInterface):
             mcqs = res.get("mcqs", [])
             if mcqs and isinstance(mcqs, list) and len(mcqs) > 0:
                 return mcqs[:num_questions]
-            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions)
+            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions, existing_questions)
         except Exception as e:
             logger.warning(f"Groq generate_mcqs error, falling back to local academic engine: {e}")
-            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions)
+            return await self.fallback_engine.generate_mcqs(topic_title, unit_context, subject_context, source_text, num_questions, existing_questions)
+
+    async def answer_topic_question(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        question: str,
+        source_text: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+    ) -> str:
+        messages = [{"role": "system", "content": TOPIC_QA_SYSTEM_PROMPT}]
+
+        # Add course context primer
+        context_prompt = (
+            f"Course / Subject: {subject_context or 'Academic Course'}\n"
+            f"Unit / Module: {unit_context or 'Current Unit'}\n"
+            f"Topic: {topic_title}\n"
+        )
+        if source_text:
+            context_prompt += f"\nReference Study Notes Excerpt (Verified Academic Material):\n{source_text[:3000]}\n"
+
+        messages.append({"role": "system", "content": context_prompt})
+
+        # Add recent conversation history if provided
+        if conversation_history:
+            for item in conversation_history[-6:]:
+                if item.get("question") and item.get("answer"):
+                    messages.append({"role": "user", "content": item["question"]})
+                    messages.append({"role": "assistant", "content": item["answer"]})
+
+        messages.append({"role": "user", "content": question})
+
+        try:
+            answer = await self._call_groq_text(messages)
+            if answer and answer.strip():
+                return answer.strip()
+            return await self.fallback_engine.answer_topic_question(
+                topic_title, unit_context, subject_context, question, source_text, conversation_history
+            )
+        except Exception as e:
+            logger.warning(f"Groq answer_topic_question error, falling back to local engine: {e}")
+            return await self.fallback_engine.answer_topic_question(
+                topic_title, unit_context, subject_context, question, source_text, conversation_history
+            )
+
 
 
 # Provider factory
