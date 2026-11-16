@@ -16,6 +16,7 @@ from backend.app.schemas.all_schemas import (
 from backend.app.prompts.academic_prompts import (
     SYLLABUS_PARSER_SYSTEM_PROMPT,
     STUDY_NOTES_SYSTEM_PROMPT,
+    CUSTOM_NOTE_SYSTEM_PROMPT,
     MEMORIZATION_GENERATOR_SYSTEM_PROMPT,
     EXAM_QUESTIONS_SYSTEM_PROMPT,
     ANSWER_EVALUATION_SYSTEM_PROMPT,
@@ -1158,19 +1159,20 @@ class GroqProvider(AIProviderInterface):
             f"EXISTING TOPIC CONTEXT EXCERPT:\n{context_excerpt}\n\n"
             f"STUDENT'S INQUIRY / SECTION TOPIC:\n"
             f"\"{prompt}\"\n\n"
-            f"TASK:\n"
-            f"1. Generate an authoritative, university-grade study material section specifically answering the student's inquiry regarding '{topic_title}'.\n"
-            f"2. Use structured GitHub Flavored Markdown with clear section headings, detailed analytical explanations, alerts (> [!NOTE] or > [!IMPORTANT] or > [!WARNING]), technical diagrams/tables where relevant, and exam-grade rigor.\n"
-            f"3. Formulate a clean, professional section title (e.g. 'Limitations & Edge Cases: Apache Pig', 'Comparison: Hive vs Pig Latin', etc.).\n\n"
+            f"TUTORING TASK:\n"
+            f"Provide an intuitive, clear, step-by-step academic explanation answering the student's inquiry regarding '{topic_title}'.\n"
+            f"- Start with simple intuition, practical analogies, and clear context before diving into deep technical mechanics.\n"
+            f"- Explain WHY it works, not just WHAT it is.\n"
+            f"- Include mathematical formulations using standard LaTeX ($...$ for inline, $$...$$ for block math) with symbol explanations where applicable.\n"
+            f"- If comparing concepts or technologies, use clean Markdown comparison tables.\n"
+            f"- Include step-by-step execution workflows, pseudocode/code snippets, advantages, and limitations where relevant.\n"
+            f"- Provide exam-ready takeaways and practical applications.\n\n"
             f"Return strictly valid JSON matching this schema:\n"
-            f'{{"title": "Section Title", "markdown_text": "Detailed markdown content..."}}'
+            f'{{"title": "Concise Descriptive Section Title", "markdown_text": "Complete markdown content formatted with KaTeX and headings..."}}'
         )
         try:
             res = await self._call_groq_json([
-                {
-                    "role": "system",
-                    "content": "You are a distinguished university professor and computer science textbook author. Produce comprehensive, academically rigorous, deeply informative study material sections adhering strictly to syllabus standards."
-                },
+                {"role": "system", "content": CUSTOM_NOTE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_msg}
             ])
             return res

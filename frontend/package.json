@@ -22,10 +22,13 @@
     "@xyflow/react": "^12.12.1",
     "axios": "^1.21.1",
     "clsx": "^2.1.1",
+    "katex": "^0.19.1",
     "lucide-react": "^1.72.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.5",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "tailwind-merge": "^3.7.0",
     "zustand": "^5.1.0"
   }
