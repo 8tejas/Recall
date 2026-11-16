@@ -1176,7 +1176,7 @@ class GroqProvider(AIProviderInterface):
             f"- If describing mechanisms, break into numbered steps with clear variable definitions.\n"
             f"- If listing pros/cons, give 5‑7 concise bullet points.\n"
             f"- If comparing concepts, use a clean Markdown table.\n"
-            f"- Write equations in clean LaTeX ($...$ for inline, $$...$$ for block math).\n\n""
+            f"- Write equations in clean LaTeX ($...$ for inline, $$...$$ for block math).\n\n"
             f"Return strictly valid JSON matching this schema:\n"
             f'{{"title": "Concise Descriptive Section Title", "markdown_text": "Complete markdown content formatted with KaTeX and headings..."}}'
         )
