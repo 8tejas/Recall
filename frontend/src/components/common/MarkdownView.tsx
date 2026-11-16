@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -10,9 +10,28 @@ interface Props {
   className?: string;
 }
 
+/**
+ * Normalizes LaTeX math expressions:
+ * 1. Converts \[ ... \] to display math block $$\n...\n$$
+ * 2. Converts \( ... \) to inline math $...$
+ * 3. Ensures single-line $$ ... $$ is expanded with newlines for remark-math display block parsing
+ */
+function normalizeMath(text: string): string {
+  if (!text) return '';
+  // Convert \[ ... \] to display block $$ ... $$
+  let cleaned = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`);
+  // Convert \( ... \) to inline math $ ... $
+  cleaned = cleaned.replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => `$${math.trim()}$`);
+  // Convert single-line $$ ... $$ to properly newline-padded display block $$ ... $$
+  cleaned = cleaned.replace(/\$\$\s*([^\n$]+?)\s*\$\$/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`);
+  return cleaned;
+}
+
 export const MarkdownView: React.FC<Props> = ({ content, className = '' }) => {
+  const normalizedContent = useMemo(() => normalizeMath(content), [content]);
+
   return (
-    <div className={`markdown-content text-sm leading-relaxed ${className}`}>
+    <div className={`markdown-content text-sm leading-relaxed [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-2 ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
         rehypePlugins={[rehypeKatex]}
@@ -107,7 +126,7 @@ export const MarkdownView: React.FC<Props> = ({ content, className = '' }) => {
           ),
         }}
       >
-        {content}
+        {normalizedContent}
       </ReactMarkdown>
     </div>
   );
