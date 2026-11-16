@@ -151,6 +151,15 @@ class MaterialGenerateRequest(BaseModel):
     )
     custom_focus: Optional[str] = None
 
+class MaterialPromptRequest(BaseModel):
+    prompt: str = Field(..., description="Student inquiry, specific aspect, e.g. Limitations, Execution Mechanism, etc.")
+    title: Optional[str] = None
+
+class MaterialCreateRequest(BaseModel):
+    title: str
+    markdown_text: str
+    content_type: Optional[str] = "custom"
+
 class MaterialUpdate(BaseModel):
     title: Optional[str] = None
     markdown_text: Optional[str] = None

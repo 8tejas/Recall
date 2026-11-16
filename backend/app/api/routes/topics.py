@@ -13,6 +13,8 @@ from backend.app.schemas.all_schemas import (
     TopicOut,
     TopicUpdate,
     MaterialGenerateRequest,
+    MaterialPromptRequest,
+    MaterialCreateRequest,
     MaterialOut,
     MaterialUpdate,
     ExerciseOut,
@@ -474,6 +476,110 @@ def update_material(
     db.commit()
     db.refresh(mat)
     return mat
+
+@router.post("/{id}/materials/prompt", response_model=MaterialOut)
+async def prompt_custom_material(
+    id: str,
+    req: MaterialPromptRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    topic = (
+        db.query(Topic)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(Topic.id == id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    unit = topic.unit
+    subject = unit.subject
+    ai = get_ai_provider()
+
+    # Collect existing notes for context
+    existing_notes = (
+        db.query(LearningMaterial)
+        .filter(LearningMaterial.topic_id == topic.id)
+        .order_by(LearningMaterial.created_at.desc())
+        .first()
+    )
+    context_text = existing_notes.markdown_text if existing_notes else ""
+
+    result = await ai.generate_custom_note(
+        topic_title=topic.title,
+        unit_context=unit.title,
+        subject_context=subject.name,
+        prompt=req.prompt,
+        existing_notes_context=context_text,
+    )
+
+    title = req.title or result.get("title") or req.prompt.strip().capitalize()
+    markdown_text = result.get("markdown_text", "")
+
+    mat = LearningMaterial(
+        topic_id=topic.id,
+        content_type="custom",
+        title=title,
+        markdown_text=markdown_text,
+        content_json=result.get("content_json"),
+        version=1,
+    )
+    db.add(mat)
+    db.commit()
+    db.refresh(mat)
+    return mat
+
+@router.post("/{id}/materials", response_model=MaterialOut)
+def create_custom_material(
+    id: str,
+    req: MaterialCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    topic = (
+        db.query(Topic)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(Topic.id == id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    mat = LearningMaterial(
+        topic_id=topic.id,
+        content_type=req.content_type or "custom",
+        title=req.title,
+        markdown_text=req.markdown_text,
+        version=1,
+    )
+    db.add(mat)
+    db.commit()
+    db.refresh(mat)
+    return mat
+
+@router.delete("/materials/{material_id}")
+def delete_material(
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    mat = (
+        db.query(LearningMaterial)
+        .join(Topic, LearningMaterial.topic_id == Topic.id)
+        .join(Unit, Topic.unit_id == Unit.id)
+        .join(Subject, Unit.subject_id == Subject.id)
+        .filter(LearningMaterial.id == material_id, Subject.user_id == current_user.id)
+        .first()
+    )
+    if not mat:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    db.delete(mat)
+    db.commit()
+    return {"status": "success", "message": "Material section deleted"}
 
 @router.get("/{id}/exercises", response_model=List[ExerciseOut])
 def get_topic_exercises(

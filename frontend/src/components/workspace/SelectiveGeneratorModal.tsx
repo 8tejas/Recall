@@ -12,7 +12,7 @@ interface Props {
 
 interface GenerationOption {
   id: string;
-  category: 'Notes & Theory' | 'Memorization & Retention' | 'Examinations';
+  category: 'Notes & Theory' | 'Examinations';
   title: string;
   description: string;
   icon: any;
@@ -60,27 +60,6 @@ const GENERATION_OPTIONS: GenerationOption[] = [
     title: 'Examples & Applications',
     description: 'Concrete industrial use cases, engineering implementations, and case studies.',
     icon: BookOpen,
-  },
-  {
-    id: 'memorization_exercises',
-    category: 'Memorization & Retention',
-    title: 'Memorization Engine Exercises',
-    description: 'Progressive sentence cloze deletion, paragraph reconstruction, and sequence recall.',
-    icon: Brain,
-  },
-  {
-    id: 'conceptual_exercises',
-    category: 'Memorization & Retention',
-    title: 'Conceptual & Relationship Exercises',
-    description: 'Structural component matching, step ordering, and relationship analyses.',
-    icon: Brain,
-  },
-  {
-    id: 'written_questions',
-    category: 'Examinations',
-    title: 'Written Exam Questions (2m, 5m, 10m)',
-    description: 'University exam questions grouped by marks with model answers and evaluation rubrics.',
-    icon: HelpCircle,
   },
   {
     id: 'topic_mcqs',

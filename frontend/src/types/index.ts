@@ -43,7 +43,7 @@ export interface Subject {
 export interface LearningMaterial {
   id: string;
   topic_id: string;
-  content_type: 'comprehensive_notes' | 'quick_revision' | 'definitions' | 'classifications' | 'comparisons' | 'examples';
+  content_type: 'comprehensive_notes' | 'quick_revision' | 'definitions' | 'classifications' | 'comparisons' | 'examples' | 'custom' | string;
   title: string;
   markdown_text: string;
   content_json?: Record<string, any>;

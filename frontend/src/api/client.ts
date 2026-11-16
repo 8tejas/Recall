@@ -114,6 +114,26 @@ export const fetchTopicMaterials = async (topicId: string): Promise<LearningMate
   return res.data;
 };
 
+export const promptCustomMaterial = async (
+  topicId: string,
+  data: { prompt: string; title?: string }
+): Promise<LearningMaterial> => {
+  const res = await api.post(`/topics/${topicId}/materials/prompt`, data);
+  return res.data;
+};
+
+export const createCustomMaterial = async (
+  topicId: string,
+  data: { title: string; markdown_text: string; content_type?: string }
+): Promise<LearningMaterial> => {
+  const res = await api.post(`/topics/${topicId}/materials`, data);
+  return res.data;
+};
+
+export const deleteMaterial = async (materialId: string): Promise<void> => {
+  await api.delete(`/topics/materials/${materialId}`);
+};
+
 export const updateMaterial = async (materialId: string, data: { title?: string; markdown_text?: string }): Promise<LearningMaterial> => {
   const res = await api.put(`/topics/materials/${materialId}`, data);
   return res.data;

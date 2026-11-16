@@ -49,6 +49,18 @@ class AIProviderInterface(ABC):
         pass
 
     @abstractmethod
+    async def generate_custom_note(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        prompt: str,
+        existing_notes_context: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Generate a custom academic note section answering the student's specific prompt or focus."""
+        pass
+
+    @abstractmethod
     async def generate_memorization_items(
         self, topic_title: str, source_text: str
     ) -> Dict[str, Any]:
@@ -303,6 +315,43 @@ class AcademicFallbackProvider(AIProviderInterface):
             "content_json": {
                 "topic": topic_title,
                 "resource_type": resource_type,
+                "generated_at": "academic-engine"
+            }
+        }
+
+    async def generate_custom_note(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        prompt: str,
+        existing_notes_context: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        clean_title = prompt.strip()
+        if len(clean_title) > 60:
+            clean_title = clean_title[:57] + "..."
+        md = (
+            f"# {clean_title}\n\n"
+            f"> [!NOTE]\n> In-depth academic analysis for **{topic_title}** within {subject_context or 'the discipline'}.\n\n"
+            f"### 1. Conceptual Framework: {clean_title}\n"
+            f"In university examinations and technical implementations, analyzing **{clean_title.lower()}** provides critical insights into the real-world behavior and formal constraints of **{topic_title}**:\n\n"
+            f"- **Core Principle**: Explores the theoretical invariants, practical limitations, or specialized mechanisms governing this aspect.\n"
+            f"- **System Dynamics**: How internal components (parsers, execution engines, storage models) interact under these conditions.\n"
+            f"- **Boundary Conditions**: Key operational parameters where special handling or trade-offs arise.\n\n"
+            f"### 2. Systematic Breakdown & Technical Analysis\n"
+            f"1. **Primary Factors**: Key governing mechanisms that dictate performance and behavior.\n"
+            f"2. **Comparative Context**: How this compares to alternative paradigms or legacy methods in {unit_context or 'this unit'}.\n"
+            f"3. **Practical Implementation Details**: Real-world considerations, code structure, or architectural configuration.\n\n"
+            f"### 3. Key Takeaways & Exam Points\n"
+            f"- Clearly articulate the trade-offs, constraints, and solutions associated with {clean_title.lower()}.\n"
+            f"- When writing examination answers, cite the operational mechanisms and provide illustrative examples."
+        )
+        return {
+            "title": clean_title,
+            "markdown_text": md,
+            "content_json": {
+                "topic": topic_title,
+                "prompt": prompt,
                 "generated_at": "academic-engine"
             }
         }
@@ -1092,6 +1141,43 @@ class GroqProvider(AIProviderInterface):
             logger.warning(f"Groq generate_study_notes error, using academic fallback: {e}")
             return await self.fallback_engine.generate_study_notes(
                 topic_title, unit_context, subject_context, resource_type, custom_focus, unit_topics, unit_description
+            )
+
+    async def generate_custom_note(
+        self,
+        topic_title: str,
+        unit_context: str,
+        subject_context: str,
+        prompt: str,
+        existing_notes_context: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        context_excerpt = (existing_notes_context[:2000] + "...") if existing_notes_context else "No prior notes available."
+        user_msg = (
+            f"TARGET TOPIC: '{topic_title}'\n"
+            f"CURRICULUM CONTEXT: Subject '{subject_context}', Unit '{unit_context}'\n\n"
+            f"EXISTING TOPIC CONTEXT EXCERPT:\n{context_excerpt}\n\n"
+            f"STUDENT'S INQUIRY / SECTION TOPIC:\n"
+            f"\"{prompt}\"\n\n"
+            f"TASK:\n"
+            f"1. Generate an authoritative, university-grade study material section specifically answering the student's inquiry regarding '{topic_title}'.\n"
+            f"2. Use structured GitHub Flavored Markdown with clear section headings, detailed analytical explanations, alerts (> [!NOTE] or > [!IMPORTANT] or > [!WARNING]), technical diagrams/tables where relevant, and exam-grade rigor.\n"
+            f"3. Formulate a clean, professional section title (e.g. 'Limitations & Edge Cases: Apache Pig', 'Comparison: Hive vs Pig Latin', etc.).\n\n"
+            f"Return strictly valid JSON matching this schema:\n"
+            f'{{"title": "Section Title", "markdown_text": "Detailed markdown content..."}}'
+        )
+        try:
+            res = await self._call_groq_json([
+                {
+                    "role": "system",
+                    "content": "You are a distinguished university professor and computer science textbook author. Produce comprehensive, academically rigorous, deeply informative study material sections adhering strictly to syllabus standards."
+                },
+                {"role": "user", "content": user_msg}
+            ])
+            return res
+        except Exception as e:
+            logger.warning(f"Groq generate_custom_note error, using academic fallback: {e}")
+            return await self.fallback_engine.generate_custom_note(
+                topic_title, unit_context, subject_context, prompt, existing_notes_context
             )
 
     async def generate_memorization_items(
